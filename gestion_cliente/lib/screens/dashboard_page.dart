@@ -16,109 +16,7 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  int _currentIndex = 0;
-
-  final Map<String, String> rutasServicios = const {
-    'Gimnasio': '/gimnasio',
-    'Centro de Yoga': '/yoga',
-    'Peluqueria': '/peluqueria',
-    'Centro de Fisioterapia': '/fisioterapia',
-    'Academia': '/academia',
-  };
-
-  final Map<String, bool> _hoveringServicios = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() => _currentIndex = _tabController.index);
-      }
-    });
-
-    for (var n in widget.negocios) {
-      _hoveringServicios[n] = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  // ICONOS PERSONALIZADOS
-  IconData getIcono(String negocio) {
-    switch (negocio) {
-      case 'Gimnasio':
-        return Icons.fitness_center;
-      case 'Centro de Yoga':
-        return Icons.self_improvement;
-      case 'Peluqueria':
-        return Icons.content_cut;
-      case 'Centro de Fisioterapia':
-        return Icons.health_and_safety;
-      case 'Academia':
-        return Icons.school;
-      default:
-        return Icons.business;
-    }
-  }
-
-  Widget buildAnimatedServiceCard(String negocio, double width) {
-    final isHovering = _hoveringServicios[negocio] ?? false;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hoveringServicios[negocio] = true),
-      onExit: (_) => setState(() => _hoveringServicios[negocio] = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        transform: Matrix4.translationValues(0, isHovering ? -8 : 0, 0),
-        width: width,
-        child: Material(
-          color: Colors.white,
-          elevation: isHovering ? 10 : 4,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () {
-              final ruta = rutasServicios[negocio];
-              if (ruta != null) {
-                Navigator.pushNamed(context, ruta, arguments: {
-                  'userId': FirebaseAuth.instance.currentUser!.uid,
-                  'negocio': negocio,
-                });
-              }
-            },
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(16),
-              leading: CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFF1565C0).withOpacity(0.15),
-                child: Icon(
-                  getIcono(negocio),
-                  color: const Color(0xFF1565C0),
-                  size: 26,
-                ),
-              ),
-              title: Text(
-                negocio,
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +38,6 @@ class _DashboardPageState extends State<DashboardPage>
           ),
         ),
 
-        // LOGO MÁS GRANDE
         title: SizedBox(
           height: 130,
           child: Image.asset(
@@ -169,21 +66,9 @@ class _DashboardPageState extends State<DashboardPage>
             },
           ),
         ],
-
-        // TABS CON ANIMACIÓN
-        bottom: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.white.withOpacity(0.2),
-          ),
-          tabs: const [
-            Tab(icon: Icon(Icons.build), text: 'Servicios'),
-            Tab(icon: Icon(Icons.calendar_today), text: 'Reservas'),
-          ],
-        ),
       ),
 
+      // 👇 SOLO mostramos reservas
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -192,160 +77,13 @@ class _DashboardPageState extends State<DashboardPage>
             end: Alignment.bottomRight,
           ),
         ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween(begin: 0.98, end: 1.0).animate(animation),
-                child: child,
-              ),
-            );
-          },
-          child: _currentIndex == 0
-              ? _buildServiciosTab(user, screenWidth)
-              : _buildReservasTab(user, screenWidth),
-        ),
+        child: _buildReservasTab(user, screenWidth),
       ),
     );
   }
 
   // =========================
-  // SERVICIOS
-  // =========================
-  Widget _buildServiciosTab(User user, double screenWidth) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              children: [
-                // HEADER 
-                Center(
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: screenWidth > 1600 ? 1100 : screenWidth * 0.98,
-                    ),
-                    padding: const EdgeInsets.all(25),
-                    margin: const EdgeInsets.only(bottom: 40),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.25),
-                          Colors.white.withOpacity(0.1),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.grey.shade400,
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Emoji con borde
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          border: Border.all(color: Colors.transparent,),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.waving_hand, size: 40, color: Colors.white),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Texto "Bienvenido"
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          border: Border.all(color: Colors.transparent,),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                          child: const Text(
-                            'Bienvenido/a',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-
-                        // Nombre del usuario
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border.all(color: Colors.transparent,),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: FutureBuilder<DocumentSnapshot>(
-                            future: FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .get(),
-                            builder: (context, snapshot) {
-                              if (!snapshot.hasData) {
-                                return const Text(
-                                  'Cargando...',
-                                  style: TextStyle(color: Colors.white70),
-                                );
-                              }
-
-                              final data = snapshot.data!.data() as Map<String, dynamic>;
-                              final nombre = data['nombre'] ?? '';
-                              final apellidos = data['apellidos'] ?? '';
-
-                              return Text(
-                                '$nombre $apellidos',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.white70,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                Wrap(
-                  spacing: 20,
-                  runSpacing: 20,
-                  children: widget.negocios
-                      .map((negocio) => buildAnimatedServiceCard(
-                          negocio,
-                          screenWidth > 800
-                              ? 300
-                              : screenWidth * 0.95))
-                      .toList(),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // =========================
-  // RESERVAS
+  // RESERVAS (SIN CAMBIOS)
   // =========================
   Widget _buildReservasTab(User user, double screenWidth) {
     final reservasQuery = FirebaseFirestore.instance
@@ -390,7 +128,6 @@ class _DashboardPageState extends State<DashboardPage>
                     final hora = data['hora'];
                     final fecha = (data['fecha'] as Timestamp).toDate();
 
-
                     return Center(
                       child: SizedBox(
                         width: screenWidth > 800
@@ -409,7 +146,6 @@ class _DashboardPageState extends State<DashboardPage>
                                 Text('⏰ $hora'),
                               ],
                             ),
-
                             trailing: IconButton(
                               icon: const Icon(Icons.delete,
                                   color: Colors.red),
@@ -434,7 +170,7 @@ class _DashboardPageState extends State<DashboardPage>
                                 );
 
                                 if (confirm == true) {
-                                    HapticFeedback.mediumImpact(); // Vibración ligera al confirmar eliminación
+                                    HapticFeedback.mediumImpact();
                                     try {
                                       await FirebaseFirestore.instance
                                         .collection('reservas')
