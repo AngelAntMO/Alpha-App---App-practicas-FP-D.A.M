@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:gestion_cliente/screens/agendaworker_screen.dart';
 import 'profile_worker.dart';
 import 'package:gestion_cliente/screens/worker_check_screen.dart';
 
@@ -227,7 +228,14 @@ class _InicioWorkerState extends State<InicioWorker>
                   HoverButton(
                     icon: Icons.schedule,
                     text: "Agenda",
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AgendaWorkerPage(),
+                      ),
+                  );
+                    },
                   ),
                   const SizedBox(height: 20),
 

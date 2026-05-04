@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -137,6 +138,9 @@ class _AcademiaPageState extends State<AcademiaPage> {
   }
 
   Future<void> _reservar() async {
+
+    final user = FirebaseAuth.instance.currentUser;
+
     if (_selectedDay == null ||
         _horaSeleccionada.isEmpty ||
         _claseSeleccionada.isEmpty) {
@@ -194,12 +198,17 @@ class _AcademiaPageState extends State<AcademiaPage> {
         }
 
         final docRef = reservasRef.doc();
+        
 
         transaction.set(docRef, {
           _kCampoUserId: widget.userId,
 
           'negocioRef': negocioRef,
           'negocioNombre': widget.negocio,
+          
+          'cliente': user?.displayName?.isNotEmpty == true
+            ? user!.displayName
+            : user?.email ?? 'Usuario desconocido',
 
           'claseNombre': _claseSeleccionada,
 
