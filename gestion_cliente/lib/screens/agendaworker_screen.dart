@@ -6,11 +6,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 
 
-
-class AgendaWorkerPage extends StatelessWidget {
+class AgendaWorkerPage extends StatefulWidget {
   const AgendaWorkerPage({super.key});
   
    @override
+  
+  State<AgendaWorkerPage> createState() => _AgendaWorkerPageState();
+}
+
+class _AgendaWorkerPageState extends State<AgendaWorkerPage> {
+  int _previousCount = 0;
+
 Widget build(BuildContext context) {
   final user = FirebaseAuth.instance.currentUser;
 
@@ -63,6 +69,19 @@ Widget build(BuildContext context) {
           }
 
           final reservas = snapshot.data!.docs;
+
+          if (reservas.length > _previousCount) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+            content: Text('Nueva reserva recibida 📅'),
+            backgroundColor: Colors.green,
+        ),
+      );
+    });
+  }
+
+_previousCount = reservas.length;
 
           if (reservas.isEmpty) {
             return const Center(
