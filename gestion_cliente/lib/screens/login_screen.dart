@@ -17,7 +17,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // Configuración de Administrador
   final String _masterPasswordActual = "ADMIN1234";
 
   final TextEditingController emailController = TextEditingController();
@@ -25,7 +24,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController otpController = TextEditingController();
   final TextEditingController masterPassController = TextEditingController();
 
-  bool _buttonPressed = false;
   bool _isLoading = false;
   bool _isAdminMode = false;
   String? _generatedCode;
@@ -39,7 +37,6 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // --- 1. LÓGICA DEL CHECKBOX ADMIN ---
   void _gestionarCambioAdmin(bool? valor) {
     if (valor == true) {
       masterPassController.clear();
@@ -56,28 +53,20 @@ class _LoginPageState extends State<LoginPage> {
       builder: (dialogContext) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: Colors.white.withOpacity(0.2)),
-          ),
-          title: const Text("🔐 Acceso Admin", 
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Introduce la clave maestra", style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 20),
-              _glassField(
-                TextField(
-                  controller: masterPassController,
-                  obscureText: true,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(border: InputBorder.none, hintText: "••••", hintStyle: TextStyle(color: Colors.white24)),
-                ),
+          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("🔐 Clave Maestra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          content: SizedBox(
+            width: 300,
+            child: _glassField(
+              TextField(
+                controller: masterPassController,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(border: InputBorder.none, hintText: "••••", hintStyle: TextStyle(color: Colors.white24)),
               ),
-            ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancelar", style: TextStyle(color: Colors.white54))),
@@ -90,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
                   _mostrarMensaje("Clave incorrecta");
                 }
               },
-              child: const Text("Confirmar"),
+              child: const Text("Entrar"),
             ),
           ],
         ),
@@ -98,13 +87,12 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // --- 2. LÓGICA DE LOGIN ---
   Future<void> login() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _mostrarMensaje("Por favor, rellena todos los campos");
+      _mostrarMensaje("Rellena todos los campos");
       return;
     }
 
@@ -112,14 +100,12 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = true);
       _procederLoginFirebase(email, password);
     } else {
-      // MODO USUARIO: Generar código y mostrar Pop-up antes de entrar
       _generatedCode = (Random().nextInt(900000) + 100000).toString();
       _sendEmail(email, _generatedCode!); 
       _mostrarPopUpGmail(email, password);
     }
   }
 
-  // --- 3. POP-UP GMAIL (SIN OVERFLOW Y SIN ERRORES DE CONTROLADOR) ---
   void _mostrarPopUpGmail(String email, String password) {
     otpController.clear();
     showDialog(
@@ -132,25 +118,23 @@ class _LoginPageState extends State<LoginPage> {
             backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text("Verificación", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: SingleChildScrollView( // EVITA RAYAS AMARILLAS
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text("Introduce el código enviado a tu Gmail", style: TextStyle(color: Colors.white70), textAlign: TextAlign.center),
-                    const SizedBox(height: 20),
-                    _glassField(
-                      TextField(
-                        controller: otpController,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 5),
-                        decoration: const InputDecoration(border: InputBorder.none, hintText: "000000", hintStyle: TextStyle(color: Colors.white24, letterSpacing: 0)),
-                      ),
+            content: SizedBox(
+              width: 300,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Código enviado al email", style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 20),
+                  _glassField(
+                    TextField(
+                      controller: otpController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 5),
+                      decoration: const InputDecoration(border: InputBorder.none, hintText: "000000", hintStyle: TextStyle(color: Colors.white24, letterSpacing: 0)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             actions: [
@@ -174,32 +158,29 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // --- 4. FINALIZAR LOGIN Y NAVEGACIÓN ---
   Future<void> _procederLoginFirebase(String email, String password) async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-      
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        try {
-          final messaging = FirebaseMessaging.instance;
-          await messaging.requestPermission();
-          String? token = await messaging.getToken();
+        FirebaseMessaging.instance.getToken().then((token) {
           if (token != null) {
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).set({'fcmToken': token}, SetOptions(merge: true));
+            FirebaseFirestore.instance.collection('users').doc(user.uid).set({'fcmToken': token}, SetOptions(merge: true));
           }
-        } catch (e) { debugPrint("Error FCM: $e"); }
+        }).catchError((e) => debugPrint("Error FCM ignorado: $e"));
       }
-      
       if (!mounted) return;
       setState(() => _isLoading = false);
-      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const RootPage()), (route) => false);
-    } on FirebaseAuthException catch (_) {
-      setState(() => _isLoading = false);
-      _mostrarMensaje("Email o contraseña incorrectos");
+      Future.microtask(() {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const RootPage()), (route) => false);
+      });
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _mostrarMensaje("Error: ${e.message}");
     } catch (e) {
-      setState(() => _isLoading = false);
-      _mostrarMensaje("Error de conexión");
+      if (mounted) setState(() => _isLoading = false);
+      _mostrarMensaje("Error inesperado");
     }
   }
 
@@ -215,17 +196,16 @@ class _LoginPageState extends State<LoginPage> {
           'template_params': {'user_email': email, 'passcode': code, 'time': '15 minutos'}
         }),
       );
-    } catch (e) { debugPrint("Error email: $e"); }
+    } catch (e) { debugPrint("EmailJS Error: $e"); }
   }
 
   void _mostrarMensaje(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.redAccent));
   }
 
-  // --- 5. DISEÑO DE INTERFAZ ---
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)]),
@@ -233,58 +213,54 @@ class _LoginPageState extends State<LoginPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(title: const Text('Iniciar sesión', style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent, elevation: 0),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.10),
+        body: Center(
+          child: SingleChildScrollView(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
                 Image.asset('assets/images/LogoAlphaAppPagInicio.png', width: 180, errorBuilder: (c, e, s) => const Icon(Icons.lock, size: 50, color: Colors.white)),
                 const SizedBox(height: 40),
-                _glassField(AnimatedTextField(label: 'Email', controller: emailController, textInputAction: TextInputAction.next)),
-                const SizedBox(height: 20),
-                _glassField(AnimatedTextField(label: 'Contraseña', isPasswordField: true, controller: passwordController, onSubmitted: login)),
-                const SizedBox(height: 15),
-                _glassField(
-                  Theme(
-                    data: ThemeData(unselectedWidgetColor: Colors.white70),
-                    child: CheckboxListTile(
-                      title: const Text("Entrar como administrador", style: TextStyle(color: Colors.white, fontSize: 13)),
-                      value: _isAdminMode,
-                      activeColor: Colors.blueAccent,
-                      onChanged: _gestionarCambioAdmin,
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Center(
-                  child: GestureDetector(
-                    onTapDown: (_) => setState(() => _buttonPressed = true),
-                    onTapUp: (_) => setState(() => _buttonPressed = false),
-                    onTapCancel: () => setState(() => _buttonPressed = false),
-                    onTap: _isLoading ? null : login,
-                    child: AnimatedScale(
-                      duration: const Duration(milliseconds: 120),
-                      scale: _buttonPressed ? 0.96 : 1.0,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
-                        height: 55, width: 220,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)]),
-                          boxShadow: [BoxShadow(color: Colors.blueAccent.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
-                        ),
-                        child: Center(
-                          child: _isLoading
-                              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text('Iniciar sesión', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                
+                // LONGITUD AJUSTADA A 350
+                SizedBox(
+                  width: 350,
+                  child: Column(
+                    children: [
+                      _glassField(AnimatedTextField(label: 'Email', controller: emailController, textInputAction: TextInputAction.next)),
+                      const SizedBox(height: 20),
+                      _glassField(AnimatedTextField(label: 'Contraseña', isPasswordField: true, controller: passwordController, onSubmitted: login)),
+                      const SizedBox(height: 15),
+                      _glassField(
+                        CheckboxListTile(
+                          title: const Text("Acceso Admin", style: TextStyle(color: Colors.white, fontSize: 13)),
+                          value: _isAdminMode,
+                          activeColor: Colors.blueAccent,
+                          onChanged: _gestionarCambioAdmin,
+                          controlAffinity: ListTileControlAffinity.leading,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 30),
+                GestureDetector(
+                  onTap: _isLoading ? null : login,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 55, width: 220,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)]),
+                    ),
+                    child: Center(
+                      child: _isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white) 
+                        : const Text('Entrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
                 TextButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
                   child: const Text('¿No tienes cuenta? Regístrate', style: TextStyle(color: Colors.white70)),
@@ -298,61 +274,44 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _glassField(Widget child) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: child,
-            ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
+          child: child,
         ),
       ),
     );
   }
 }
 
-// --- COMPONENTE DE TEXTO ANIMADO ---
-class AnimatedTextField extends StatefulWidget {
+class AnimatedTextField extends StatelessWidget {
   final String label;
   final bool isPasswordField;
   final TextEditingController controller;
   final TextInputAction? textInputAction;
   final VoidCallback? onSubmitted;
   const AnimatedTextField({required this.label, this.isPasswordField = false, required this.controller, this.textInputAction, this.onSubmitted, super.key});
-  @override State<AnimatedTextField> createState() => _AnimatedTextFieldState();
-}
-class _AnimatedTextFieldState extends State<AnimatedTextField> {
-  final FocusNode _focusNode = FocusNode();
-  bool _hasFocus = false;
-  late bool _obscureText;
-  @override void initState() {
-    super.initState();
-    _obscureText = widget.isPasswordField;
-    _focusNode.addListener(() => setState(() => _hasFocus = _focusNode.hasFocus));
-  }
-  @override Widget build(BuildContext context) {
+
+  @override
+  Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
+      obscureText: isPasswordField,
       style: const TextStyle(color: Colors.white),
-      controller: widget.controller,
-      focusNode: _focusNode,
-      obscureText: _obscureText,
-      textInputAction: widget.textInputAction,
-      onSubmitted: (_) => widget.onSubmitted?.call(),
+      textInputAction: textInputAction,
+      onSubmitted: (_) => onSubmitted?.call(),
       decoration: InputDecoration(
-        hintText: widget.label,
-        hintStyle: TextStyle(color: _hasFocus ? Colors.white : Colors.white70),
+        hintText: label,
+        hintStyle: const TextStyle(color: Colors.white60),
         border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        suffixIcon: widget.isPasswordField ? IconButton(icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.white70), onPressed: () => setState(() => _obscureText = !_obscureText)) : null,
+        contentPadding: const EdgeInsets.all(16),
       ),
     );
   }
