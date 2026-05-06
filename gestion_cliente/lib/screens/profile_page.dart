@@ -20,6 +20,9 @@ class ProfilePage extends StatelessWidget {
     "assets/images/tazasuciaperfil.png",
   ];
 
+
+  
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -1109,6 +1112,8 @@ if (nombre.isEmpty && googleName.isNotEmpty) {
     );
   }
 }
+
+
 
 class AnimatedMenuButton extends StatefulWidget {
   final IconData icon;
