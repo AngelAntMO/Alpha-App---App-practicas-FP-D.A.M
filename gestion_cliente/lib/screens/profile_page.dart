@@ -203,7 +203,7 @@ class ProfilePage extends StatelessWidget {
           );
         }
 
-        String nombreCompleto = "Usuario";
+        String nombreCompleto = user.displayName ?? "Usuario";
         String email = user.email ?? "Sin correo";
         String iniciales = "U";
         String? avatarUrl;
@@ -475,18 +475,36 @@ class ProfilePage extends StatelessWidget {
 
     final data = doc.data() ?? {};
 
-    final nameController = TextEditingController(text: data['nombre'] ?? '');
-    final lastNameController = TextEditingController(
-      text: data['apellidos'] ?? '',
-    );
-    final addressController = TextEditingController(
-      text: data['direccion'] ?? '',
-    );
-    final phoneController = TextEditingController(text: data['telefono'] ?? '');
+    final user = FirebaseAuth.instance.currentUser;
+
+    final googleName = user?.displayName ?? "";
+
+
+    String nombre = data['nombre'] ?? "";
+String apellidos = data['apellidos'] ?? "";
+
+// 🔥 Si no hay datos en Firestore, usar Google
+if (nombre.isEmpty && googleName.isNotEmpty) {
+  final partes = googleName.split(" ");
+  nombre = partes.first;
+  apellidos = partes.length > 1 ? partes.sublist(1).join(" ") : "";
+}
+
+  final nameController = TextEditingController(text: nombre);
+  final lastNameController = TextEditingController(text: apellidos);
+  final addressController = TextEditingController(
+    text: data['direccion'] ?? '',
+  );
+  final phoneController = TextEditingController(
+  text: data['telefono'] ?? '',
+);
+    
 
     DateTime? birthDate = data['fechaNacimiento'] != null
         ? (data['fechaNacimiento'] as Timestamp).toDate()
         : null;
+
+        
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1110,6 +1128,7 @@ class AnimatedMenuButton extends StatefulWidget {
 
 class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
   bool _pressed = false;
+  bool _hovered = false;
 
   void _setPressed(bool value) {
     setState(() {
@@ -1119,64 +1138,77 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) {
-        _setPressed(false);
-        widget.onTap();
-      },
-      onTapCancel: () => _setPressed(false),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
-        scale: _pressed ? 0.92 : 1.0,
-        child: AnimatedContainer(
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) {
+          _setPressed(false);
+          widget.onTap();
+        },
+        onTapCancel: () => _setPressed(false),
+        child: AnimatedScale(
           duration: const Duration(milliseconds: 100),
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-            color: _pressed
-                ? Colors.white.withValues(alpha: 0.12)
-                : Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
+          curve: Curves.easeOut,
+          scale: _pressed ? 0.92 : (_hovered ? 1.03 : 1.0),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
               color: _pressed
-                  ? const Color(0xFF64B5F6).withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.1),
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : (_hovered
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : Colors.white.withValues(alpha: 0.06)),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: _pressed
+                    ? const Color(0xFF64B5F6).withValues(alpha: 0.5)
+                    : Colors.white.withValues(alpha: 0.1),
+              ),
+              boxShadow: _pressed
+                  ? [
+                      BoxShadow(
+                        color: Colors.blueAccent.withValues(alpha: 0.25),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : [],
             ),
-            boxShadow: _pressed
-                ? [
-                    BoxShadow(
-                      color: Colors.blueAccent.withValues(alpha: 0.25),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : [],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                child: Row(
-                  children: [
-                    Icon(widget.icon, color: const Color(0xFF64B5F6), size: 24),
-                    const SizedBox(width: 15),
-                    Text(
-                      widget.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white24,
-                      size: 14,
-                    ),
-                  ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        widget.icon,
+                        color: const Color(0xFF64B5F6),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 15),
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white24,
+                        size: 14,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1250,3 +1282,4 @@ class _AnimatedLogoutButtonState extends State<AnimatedLogoutButton> {
     );
   }
 }
+  

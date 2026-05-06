@@ -8,7 +8,11 @@ class GimnasioPage extends StatefulWidget {
   final String userId;
   final String negocio;
 
-  const GimnasioPage({super.key, required this.userId, required this.negocio});
+  const GimnasioPage({
+    super.key,
+    required this.userId,
+    required this.negocio,
+  });
 
   @override
   State<GimnasioPage> createState() => _GimnasioPageState();
@@ -17,6 +21,10 @@ class GimnasioPage extends StatefulWidget {
 class _GimnasioPageState extends State<GimnasioPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  Map<DateTime, int> _reservasPorDia = {};
 
   List<String> _horasDisponibles = [];
 
@@ -41,51 +49,74 @@ class _GimnasioPageState extends State<GimnasioPage> {
     '20:00',
   ];
 
+  static const int cupos = 15;
+  static const int maxReservasUsuario = 6;
+
+  DocumentReference get negocioRef =>
+      _db.collection('negocios').doc(widget.negocio);
+
+  DocumentReference claseRef(String nombre) =>
+      _db.collection('clases').doc(nombre);
+
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('es_ES', null);
     _horasDisponibles = List.from(horariosTotales);
+    _fetchCalendarData();
   }
 
-  Future<void> _actualizarHorasDisponibles() async {
+  DateTime _soloDia(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  // ─────────────────────────────
+  // CALENDARIO
+  // ─────────────────────────────
+  Future<void> _fetchCalendarData() async {
+    final snapshot = await _db
+        .collection('reservas')
+        .where('negocioRef', isEqualTo: negocioRef)
+        .where('estado', isEqualTo: 'activa')
+        .get();
+
+    final Map<DateTime, int> map = {};
+
+    for (var doc in snapshot.docs) {
+      final fecha = (doc['fecha'] as Timestamp).toDate();
+      final day = _soloDia(fecha);
+      map[day] = (map[day] ?? 0) + 1;
+    }
+
+    setState(() => _reservasPorDia = map);
+  }
+
+  // ─────────────────────────────
+  // HORAS DISPONIBLES
+  // ─────────────────────────────
+  Future<void> _actualizarHoras() async {
     if (_selectedDay == null || _actividadSeleccionada.isEmpty) return;
 
     setState(() => _loading = true);
 
-    DateTime fecha = DateTime(
-      _selectedDay!.year,
-      _selectedDay!.month,
-      _selectedDay!.day,
-    );
+    final dia = _soloDia(_selectedDay!);
 
-    final snapshot = await FirebaseFirestore.instance
+    final snapshot = await _db
         .collection('reservas')
-        .where('servicio', isEqualTo: widget.negocio)
-        .where('fecha', isEqualTo: Timestamp.fromDate(fecha))
-        .where('clase', isEqualTo: _actividadSeleccionada)
+        .where('negocioRef', isEqualTo: negocioRef)
+        .where('claseRef', isEqualTo: claseRef(_actividadSeleccionada))
+        .where('fecha', isEqualTo: Timestamp.fromDate(dia))
         .where('estado', isEqualTo: 'activa')
         .get();
 
     Map<String, int> conteo = {};
-    List<String> mias = [];
 
     for (var doc in snapshot.docs) {
-      String hora = doc['hora'];
-      String uid = doc['userId'];
-
+      final hora = doc['hora'];
       conteo[hora] = (conteo[hora] ?? 0) + 1;
-
-      if (uid == widget.userId) {
-        mias.add(hora);
-      }
     }
 
     setState(() {
       _horasDisponibles = horariosTotales.where((h) {
-        int total = conteo[h] ?? 0;
-        bool yaEstoy = mias.contains(h);
-        return total < 20 && !yaEstoy;
+        return (conteo[h] ?? 0) < cupos;
       }).toList();
 
       if (!_horasDisponibles.contains(_horaSeleccionada)) {
@@ -96,6 +127,9 @@ class _GimnasioPageState extends State<GimnasioPage> {
     });
   }
 
+  // ─────────────────────────────
+  // RESERVAR
+  // ─────────────────────────────
   Future<void> _reservar() async {
     if (_selectedDay == null ||
         _horaSeleccionada.isEmpty ||
@@ -104,88 +138,111 @@ class _GimnasioPageState extends State<GimnasioPage> {
       return;
     }
 
+    final dia = _soloDia(_selectedDay!);
+    final claseR = claseRef(_actividadSeleccionada);
+
+    final partes = _horaSeleccionada.split(':');
+
+    final fechaCompleta = DateTime(
+      dia.year,
+      dia.month,
+      dia.day,
+      int.parse(partes[0]),
+      int.parse(partes[1]),
+    );
+
     setState(() => _loading = true);
 
-    DateTime fecha = DateTime(
-      _selectedDay!.year,
-      _selectedDay!.month,
-      _selectedDay!.day,
-    );
-
-    // ── fechaCompleta para notificación ────────────────────
-    final partesHora = _horaSeleccionada.split(':');
-    final fechaCompleta = DateTime(
-      fecha.year,
-      fecha.month,
-      fecha.day,
-      int.parse(partesHora[0]),
-      int.parse(partesHora[1]),
-    );
-    // ───────────────────────────────────────────────────────
-
-    final check = await FirebaseFirestore.instance
-        .collection('reservas')
-        .where('servicio', isEqualTo: widget.negocio)
-        .where('fecha', isEqualTo: Timestamp.fromDate(fecha))
-        .where('clase', isEqualTo: _actividadSeleccionada)
-        .where('hora', isEqualTo: _horaSeleccionada)
-        .where('estado', isEqualTo: 'activa')
-        .get();
-
-    if (check.docs.any((d) => d['userId'] == widget.userId)) {
-      _msg("Ya tienes reserva");
-      setState(() => _loading = false);
-      return;
-    }
-
-    if (check.docs.length >= 20) {
-      _msg("Cupo lleno");
-      setState(() => _loading = false);
-      return;
-    }
-
-    await FirebaseFirestore.instance.collection('reservas').add({
-      'userId': widget.userId,
-      'servicio': widget.negocio,
-      'fecha': fecha,
-      'hora': _horaSeleccionada,
-      'clase': _actividadSeleccionada,
-      'estado': 'activa',
-      'fechaHora': Timestamp.fromDate(fechaCompleta), // ← añadido
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    _msg("Reserva confirmada");
-
-    setState(() {
-      _selectedDay = null;
-      _horaSeleccionada = '';
-      _actividadSeleccionada = '';
-      _horasDisponibles = List.from(horariosTotales);
-    });
-
-    // ── Programar notificación ──────────────────────────────
     try {
+      // 🔒 1. LIMITE USUARIO (SOLO GIMNASIO)
+      final misReservas = await _db
+          .collection('reservas')
+          .where('userId', isEqualTo: widget.userId)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('estado', isEqualTo: 'activa')
+          .get();
+
+      if (misReservas.docs.length >= maxReservasUsuario) {
+        _msg("Máximo $maxReservasUsuario reservas activas en gimnasio");
+        return;
+      }
+
+      // 🔒 2. EVITAR DUPLICADO MISMA CLASE
+      final duplicado = await _db
+          .collection('reservas')
+          .where('userId', isEqualTo: widget.userId)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('claseRef', isEqualTo: claseR)
+          .where('fecha', isEqualTo: Timestamp.fromDate(dia))
+          .where('hora', isEqualTo: _horaSeleccionada)
+          .where('estado', isEqualTo: 'activa')
+          .get();
+
+      if (duplicado.docs.isNotEmpty) {
+        _msg("Ya tienes esta reserva");
+        return;
+      }
+
+      // 🔒 3. CUPOS (15 por clase/hora)
+      final snapshot = await _db
+          .collection('reservas')
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('claseRef', isEqualTo: claseR)
+          .where('fecha', isEqualTo: Timestamp.fromDate(dia))
+          .where('hora', isEqualTo: _horaSeleccionada)
+          .where('estado', isEqualTo: 'activa')
+          .get();
+
+      if (snapshot.docs.length >= cupos) {
+        _msg("Cupo completo");
+        return;
+      }
+
+      // 💾 GUARDAR
+      await _db.collection('reservas').add({
+        'userId': widget.userId,
+        'negocioRef': negocioRef,
+        'claseRef': claseR,
+        'negocioNombre': widget.negocio,
+        'claseNombre': _actividadSeleccionada,
+        'fecha': Timestamp.fromDate(dia),
+        'hora': _horaSeleccionada,
+        'fechaHora': Timestamp.fromDate(fechaCompleta),
+        'estado': 'activa',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      _msg("Reserva confirmada");
+
+      await _fetchCalendarData();
+
+      setState(() {
+        _selectedDay = null;
+        _horaSeleccionada = '';
+        _actividadSeleccionada = '';
+        _horasDisponibles = List.from(horariosTotales);
+      });
+
       await NotificationsService.scheduleNotification(
         id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         servicio: widget.negocio,
         especialista: _actividadSeleccionada,
-        scheduledDate: fechaCompleta,
+        scheduledDate:
+            fechaCompleta.subtract(const Duration(hours: 24)), // 🔥 24h antes
       );
     } catch (e) {
-      debugPrint('Error al programar notificación: $e');
+      _msg("Error: $e");
+    } finally {
+      setState(() => _loading = false);
     }
-    // ────────────────────────────────────────────────────────
-
-    if (mounted) setState(() => _loading = false);
   }
 
-  void _msg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
-    );
+  void _msg(String m) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(m)));
   }
 
+  
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -255,6 +312,36 @@ class _GimnasioPageState extends State<GimnasioPage> {
                         borderRadius: BorderRadius.circular(25),
                       ),
                       child: TableCalendar(
+                        calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, date, events) {
+                            final day = _soloDia(date);
+                            final count = _reservasPorDia[day] ?? 0;
+
+                            if (count == 0) return null;
+
+                            Color color;
+
+                            if (count >= cupos * horariosTotales.length) {
+                              color = Colors.red; // 🔴 todo el día lleno
+                            } else if (count >= (cupos * horariosTotales.length) / 2) {
+                              color = Colors.orange; // 🟠 medio lleno
+                            } else {
+                              color = Colors.green; // 🟢 hay reservas
+                            }
+
+                            return Positioned(
+                              bottom: 6,
+                              child: Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                         locale: 'es_ES',
                         firstDay: DateTime.now(),
                         lastDay: DateTime.now().add(const Duration(days: 365)),
@@ -266,7 +353,7 @@ class _GimnasioPageState extends State<GimnasioPage> {
                             _selectedDay = s;
                             _focusedDay = f;
                           });
-                          _actualizarHorasDisponibles();
+                          _actualizarHoras();
                         },
                         daysOfWeekStyle: const DaysOfWeekStyle(
                           weekdayStyle: TextStyle(
@@ -303,7 +390,7 @@ class _GimnasioPageState extends State<GimnasioPage> {
                       items: actividades,
                       onChanged: (v) {
                         setState(() => _actividadSeleccionada = v!);
-                        _actualizarHorasDisponibles();
+                        _actualizarHoras();
                       },
                     ),
 

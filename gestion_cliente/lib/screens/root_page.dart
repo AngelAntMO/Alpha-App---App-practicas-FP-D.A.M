@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:gestion_cliente/screens/inicio_superadmin.dart';
 import 'package:gestion_cliente/screens/inicio_admin.dart';
-
 import 'login_screen.dart';
 import 'inicio_screen.dart';
 import 'inicio_worker.dart'; 
@@ -29,6 +29,9 @@ class RootPage extends StatelessWidget {
 
       case 'admin':
         return const InicioAdmin();
+
+      case 'superadmin':
+        return const InicioSuperAdmin();
 
       default:
         return const PaginaInicio();

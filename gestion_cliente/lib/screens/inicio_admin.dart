@@ -231,25 +231,28 @@ class _InicioAdminState extends State<InicioAdmin> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)],
+          colors: [
+            Color(0xFF1E293B),
+            Color(0xFF334155),
+            Color(0xFF64B5F6),
+          ],
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
+
         appBar: AppBar(
-          elevation: 0,
           backgroundColor: Colors.transparent,
-          leadingWidth: 160,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: Image.asset('assets/images/Icono_AlphaApp.png', fit: BoxFit.contain),
-          ),
+          elevation: 0,
+          title: const Text("Panel Administrador"),
           actions: [
             IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70),
-              onPressed: () async => await FirebaseAuth.instance.signOut(),
+              icon: const Icon(Icons.logout),
+              color: Colors.white ,
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+              },
             ),
-            const SizedBox(width: 10),
           ],
         ),
         body: Column(

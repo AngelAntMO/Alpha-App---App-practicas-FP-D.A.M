@@ -2,7 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:gestion_cliente/notifications_service.dart';
+
+const _kColeccion = 'reservas';
+const _kEstadoActiva = 'activa';
+const _kCampoFecha = 'fecha';
+const _kCampoHora = 'hora';
+const _kCampoEstado = 'estado';
+const _kCampoUserId = 'userId';
+const _kCampoNegocioRef = 'negocioRef';
+const _kCampoClase = 'claseNombre';
+const _kMaxReservas = 3;
+const _kMaxPorHora = 10;
 
 class AcademiaPage extends StatefulWidget {
   final String userId;
@@ -19,6 +29,10 @@ class _AcademiaPageState extends State<AcademiaPage> {
   DateTime? _selectedDay;
   List<DateTime> _blockedDays = [];
   List<String> _horasDisponibles = [];
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  DocumentReference get negocioRef =>
+      _db.collection('negocios').doc(widget.negocio);
 
   String _horaSeleccionada = '';
   String _claseSeleccionada = '';
@@ -37,178 +51,189 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
   Future<void> _fetchBlockedDays() async {
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('reservas')
-          .where('servicio', isEqualTo: widget.negocio)
-          .where('estado', isEqualTo: 'activa')
-          .get();
+      final inicio = DateTime(_focusedDay.year, _focusedDay.month, 1);
+      final fin = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
 
-      List<DateTime> blocked = [];
+      final snapshot = await _db
+          .collection(_kColeccion)
+          .where(_kCampoNegocioRef, isEqualTo: negocioRef)
+          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+          .where(
+            _kCampoFecha,
+            isGreaterThanOrEqualTo: Timestamp.fromDate(inicio),
+          )
+          .where(_kCampoFecha, isLessThanOrEqualTo: Timestamp.fromDate(fin))
+          .get();
+      final Set<DateTime> blocked = {};
+
       for (var doc in snapshot.docs) {
-        DateTime fecha = (doc['fecha'] as Timestamp).toDate();
+        final fecha = (doc['fecha'] as Timestamp).toDate();
+
         blocked.add(DateTime(fecha.year, fecha.month, fecha.day));
       }
+
       if (mounted) {
         setState(() {
-          _blockedDays = blocked;
+          _blockedDays = blocked.toList();
         });
       }
     } catch (e) {
-      debugPrint("Error obteniendo días: $e");
+      debugPrint("Error días bloqueados: $e");
     }
   }
 
   Future<void> _actualizarHorasDisponibles() async {
     if (_selectedDay == null || _claseSeleccionada.isEmpty) return;
-    setState(() {
-      _loading = true;
-    });
 
-    DateTime fechaBusqueda = DateTime(
-      _selectedDay!.year,
-      _selectedDay!.month,
-      _selectedDay!.day,
-    );
+    setState(() => _loading = true);
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('reservas')
-          .where('servicio', isEqualTo: widget.negocio)
-          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBusqueda))
-          .where('clase', isEqualTo: _claseSeleccionada)
-          .where('estado', isEqualTo: 'activa')
+      final fechaBusqueda = DateTime(
+        _selectedDay!.year,
+        _selectedDay!.month,
+        _selectedDay!.day,
+      );
+
+      final snapshot = await _db
+          .collection(_kColeccion)
+          .where(_kCampoNegocioRef, isEqualTo: negocioRef)
+          .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fechaBusqueda))
+          .where(_kCampoClase, isEqualTo: _claseSeleccionada)
+          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
           .get();
 
-      Map<String, int> conteoGlobal = {};
-      List<String> misHoras = [];
+      final Map<String, int> conteoPorHora = {};
+      final Set<String> misHoras = {};
 
       for (var doc in snapshot.docs) {
-        String hora = doc['hora'] as String;
-        String uid = doc['userId'] as String;
-        conteoGlobal[hora] = (conteoGlobal[hora] ?? 0) + 1;
-        if (uid == widget.userId) {
+        final hora = doc[_kCampoHora] as String;
+        final userId = doc[_kCampoUserId] as String;
+
+        conteoPorHora[hora] = (conteoPorHora[hora] ?? 0) + 1;
+
+        if (userId == widget.userId) {
           misHoras.add(hora);
         }
       }
 
       setState(() {
         _horasDisponibles = horariosTotales.where((h) {
-          int total = conteoGlobal[h] ?? 0;
-          bool yoYaReserve = misHoras.contains(h);
-          return total < 10 && !yoYaReserve;
+          final total = conteoPorHora[h] ?? 0;
+          final yaReservado = misHoras.contains(h);
+
+          return total < _kMaxPorHora && !yaReservado;
         }).toList();
 
         if (!_horasDisponibles.contains(_horaSeleccionada)) {
           _horaSeleccionada = '';
         }
+
         _loading = false;
       });
     } catch (e) {
-      debugPrint("Error: $e");
-      setState(() {
-        _loading = false;
-      });
+      debugPrint("Error horas disponibles: $e");
+      setState(() => _loading = false);
     }
   }
 
-  Future<void> _reservar() async {
-    if (_selectedDay == null ||
-        _horaSeleccionada.isEmpty ||
-        _claseSeleccionada.isEmpty) {
-      _mostrarMensaje('Completa todos los campos');
+Future<void> _reservar() async {
+  if (_selectedDay == null ||
+      _horaSeleccionada.isEmpty ||
+      _claseSeleccionada.isEmpty) {
+    _mostrarMensaje('Completa todos los campos');
+    return;
+  }
+
+  final fechaBase = DateTime(
+    _selectedDay!.year,
+    _selectedDay!.month,
+    _selectedDay!.day,
+  );
+
+  final partesHora = _horaSeleccionada.split(':');
+
+  final fechaHora = DateTime(
+    fechaBase.year,
+    fechaBase.month,
+    fechaBase.day,
+    int.parse(partesHora[0]),
+    int.parse(partesHora[1]),
+  );
+
+  setState(() => _loading = true);
+
+  final reservasRef = _db.collection(_kColeccion);
+
+  try {
+  
+    final userQuery = await reservasRef
+    .where(_kCampoUserId, isEqualTo: widget.userId)
+    .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+    .where(_kCampoNegocioRef, isEqualTo: negocioRef)
+    .get();
+
+    if (userQuery.docs.length >= _kMaxReservas) {
+      _mostrarMensaje('Máximo $_kMaxReservas reservas activas');
       return;
     }
+    await _db.runTransaction((transaction) async {
 
-    setState(() {
-      _loading = true;
-    });
-
-    try {
-      DateTime fechaBusqueda = DateTime(
-        _selectedDay!.year,
-        _selectedDay!.month,
-        _selectedDay!.day,
-      );
-
-      // ── fechaCompleta para notificación ────────────────────
-      final partesHora = _horaSeleccionada.split(':');
-      final fechaCompleta = DateTime(
-        fechaBusqueda.year,
-        fechaBusqueda.month,
-        fechaBusqueda.day,
-        int.parse(partesHora[0]),
-        int.parse(partesHora[1]),
-      );
-      // ───────────────────────────────────────────────────────
-
-      final snapshotCheck = await FirebaseFirestore.instance
-          .collection('reservas')
-          .where('servicio', isEqualTo: widget.negocio)
-          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBusqueda))
-          .where('clase', isEqualTo: _claseSeleccionada)
-          .where('hora', isEqualTo: _horaSeleccionada)
-          .where('estado', isEqualTo: 'activa')
+      final slotQuery = await reservasRef
+          .where(_kCampoNegocioRef, isEqualTo: negocioRef)
+          .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fechaBase))
+          .where(_kCampoHora, isEqualTo: _horaSeleccionada)
+          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
           .get();
 
-      bool yaEstoyInscrito = snapshotCheck.docs.any(
+      if (slotQuery.docs.length >= _kMaxPorHora) {
+        throw Exception('Cupo completo para esta hora');
+      }
+
+      final yaReservado = slotQuery.docs.any(
         (doc) => doc['userId'] == widget.userId,
       );
 
-      if (yaEstoyInscrito) {
-        _mostrarMensaje('Ya tienes una reserva para esta clase y hora.');
-        _actualizarHorasDisponibles();
-        return;
+      if (yaReservado) {
+        throw Exception('Ya tienes una reserva en este horario');
       }
 
-      if (snapshotCheck.docs.length >= 10) {
-        _mostrarMensaje('¡Lo sentimos! El cupo se acaba de llenar.');
-        _actualizarHorasDisponibles();
-        return;
-      }
+      final docRef = reservasRef.doc();
 
-      await FirebaseFirestore.instance.collection('reservas').add({
-        'userId': widget.userId,
-        'servicio': widget.negocio,
-        'fecha': fechaBusqueda,
+      transaction.set(docRef, {
+        _kCampoUserId: widget.userId,
+        'negocioRef': negocioRef,
+        'negocioNombre': widget.negocio,
+        'claseNombre': _claseSeleccionada,
+        'claseRef': FirebaseFirestore.instance
+            .collection('clases')
+            .doc(_claseSeleccionada),
+        'fecha': Timestamp.fromDate(fechaBase),
         'hora': _horaSeleccionada,
-        'clase': _claseSeleccionada,
+        'fechaHora': Timestamp.fromDate(fechaHora),
         'estado': 'activa',
-        'fechaHora': Timestamp.fromDate(fechaCompleta), // ← añadido
         'timestamp': FieldValue.serverTimestamp(),
       });
+    });
+    _mostrarMensaje('Reserva confirmada');
 
-      _mostrarMensaje('¡Reserva confirmada!');
-      _fetchBlockedDays();
-      setState(() {
-        _selectedDay = null;
-        _horaSeleccionada = '';
-        _claseSeleccionada = '';
-        _horasDisponibles = List.from(horariosTotales);
-      });
+    await _fetchBlockedDays();
 
-      // ── Programar notificación ──────────────────────────────
-      try {
-        await NotificationsService.scheduleNotification(
-          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          servicio: widget.negocio,
-          especialista: _claseSeleccionada,
-          scheduledDate: fechaCompleta,
-        );
-      } catch (e) {
-        debugPrint('Error al programar notificación: $e');
-      }
-      // ────────────────────────────────────────────────────────
+    setState(() {
+      _selectedDay = null;
+      _horaSeleccionada = '';
+      _claseSeleccionada = '';
+      _horasDisponibles = List.from(horariosTotales);
+    });
 
-    } catch (e) {
-      _mostrarMensaje('Error al reservar: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-    }
+  } catch (e, stack) {
+    debugPrint("ERROR REAL: $e");
+    debugPrintStack(stackTrace: stack);
+
+    _mostrarMensaje(e.toString().replaceAll('Exception: ', ''));
+  } finally {
+    if (mounted) setState(() => _loading = false);
   }
+}
 
   void _mostrarMensaje(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(
@@ -251,11 +276,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFF5F5F5),
-              Color(0xFFFFB74D),
-              Color(0xFFF57C00),
-            ],
+            colors: [Color(0xFFF5F5F5), Color(0xFFFFB74D), Color(0xFFF57C00)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -277,7 +298,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // ── Calendario ──────────────────────────────────────────
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.7),
@@ -362,7 +382,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
                     const SizedBox(height: 30),
 
-                    // ── Dropdown clase ──────────────────────────────────────
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.6),
@@ -385,7 +404,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
                         alignment: AlignmentDirectional.center,
-                        initialValue: _claseSeleccionada.isEmpty // ← fix
+                        initialValue: _claseSeleccionada.isEmpty
                             ? null
                             : _claseSeleccionada,
                         decoration: const InputDecoration(
@@ -429,7 +448,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
                     const SizedBox(height: 15),
 
-                    // ── Dropdown hora ───────────────────────────────────────
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -452,7 +470,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
                         alignment: AlignmentDirectional.center,
-                        initialValue: _horaSeleccionada.isEmpty // ← fix
+                        initialValue: _horaSeleccionada.isEmpty
                             ? null
                             : _horaSeleccionada,
                         decoration: const InputDecoration(
@@ -490,14 +508,12 @@ class _AcademiaPageState extends State<AcademiaPage> {
                         }).toList(),
                         onChanged: _selectedDay == null
                             ? null
-                            : (val) =>
-                                setState(() => _horaSeleccionada = val!),
+                            : (val) => setState(() => _horaSeleccionada = val!),
                       ),
                     ),
 
                     const SizedBox(height: 35),
 
-                    // ── Botón reservar ──────────────────────────────────────
                     SizedBox(
                       width: screenWidth * 0.7,
                       height: 55,

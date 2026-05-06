@@ -3,23 +3,41 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-class PeluqueriaPage extends StatefulWidget {
+const _kColeccion = 'reservas';
+const _kEstadoActiva = 'activa';
+const _kCampoFecha = 'fecha';
+const _kCampoHora = 'hora';
+const _kCampoEstado = 'estado';
+const _kCampoUserId = 'userId';
+const _kCampoNegocioRef = 'negocioRef';
+const _kCampoClase = 'claseNombre';
+const _kMaxPorHora = 10;
+const _kMaxReservas = 3;
 
+class PeluqueriaPage extends StatefulWidget {
   final String userId;
   final String negocio;
 
-  const PeluqueriaPage({super.key, required this.userId, required this.negocio});
+  const PeluqueriaPage({
+    super.key,
+    required this.userId,
+    required this.negocio,
+  });
 
   @override
   State<PeluqueriaPage> createState() => _PeluqueriaPageState();
 }
 
-
-  class _PeluqueriaPageState extends State<PeluqueriaPage> {
+class _PeluqueriaPageState extends State<PeluqueriaPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
   List<String> _horasDisponibles = [];
+
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  DocumentReference get negocioRef =>
+      _db.collection('negocios').doc(widget.negocio);
 
   String _horaSeleccionada = '';
   String _actividadSeleccionada = '';
@@ -63,20 +81,20 @@ class PeluqueriaPage extends StatefulWidget {
       _selectedDay!.day,
     );
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('reservas')
-        .where('servicio', isEqualTo: widget.negocio)
-        .where('fecha', isEqualTo: Timestamp.fromDate(fecha))
-        .where('clase', isEqualTo: _actividadSeleccionada)
-        .where('estado', isEqualTo: 'activa')
+    final snapshot = await _db
+        .collection(_kColeccion)
+        .where(_kCampoNegocioRef, isEqualTo: negocioRef)
+        .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fecha))
+        .where(_kCampoClase, isEqualTo: _actividadSeleccionada)
+        .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
         .get();
 
     Map<String, int> conteo = {};
     List<String> mias = [];
 
     for (var doc in snapshot.docs) {
-      String hora = doc['hora'];
-      String uid = doc['userId'];
+      String hora = doc[_kCampoHora] as String;
+      String uid = doc[_kCampoUserId] as String;
 
       conteo[hora] = (conteo[hora] ?? 0) + 1;
 
@@ -89,7 +107,7 @@ class PeluqueriaPage extends StatefulWidget {
       _horasDisponibles = horariosTotales.where((h) {
         int total = conteo[h] ?? 0;
         bool yaEstoy = mias.contains(h);
-        return total < 20 && !yaEstoy;
+        return total < _kMaxPorHora && !yaEstoy;
       }).toList();
 
       if (!_horasDisponibles.contains(_horaSeleccionada)) {
@@ -100,7 +118,7 @@ class PeluqueriaPage extends StatefulWidget {
     });
   }
 
-   Future<void> _reservar() async {
+  Future<void> _reservar() async {
     if (_selectedDay == null ||
         _horaSeleccionada.isEmpty ||
         _actividadSeleccionada.isEmpty) {
@@ -116,35 +134,51 @@ class PeluqueriaPage extends StatefulWidget {
       _selectedDay!.day,
     );
 
-    final check = await FirebaseFirestore.instance
-        .collection('reservas')
-        .where('servicio', isEqualTo: widget.negocio)
-        .where('fecha', isEqualTo: Timestamp.fromDate(fecha))
-        .where('clase', isEqualTo: _actividadSeleccionada)
-        .where('hora', isEqualTo: _horaSeleccionada)
-        .where('estado', isEqualTo: 'activa')
+    final check = await _db
+        .collection(_kColeccion)
+        .where(_kCampoNegocioRef, isEqualTo: negocioRef)
+        .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fecha))
+        .where(_kCampoClase, isEqualTo: _actividadSeleccionada)
+        .where(_kCampoHora, isEqualTo: _horaSeleccionada)
+        .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
         .get();
 
-    if (check.docs.any((d) => d['userId'] == widget.userId)) {
+    if (check.docs.any((d) => d[_kCampoUserId] == widget.userId)) {
       _msg("Ya tienes reserva");
       setState(() => _loading = false);
       return;
     }
 
-    if (check.docs.length >= 20) {
+    if (check.docs.length >= _kMaxReservas) {
       _msg("Cupo lleno");
       setState(() => _loading = false);
       return;
     }
-   await FirebaseFirestore.instance.collection('reservas').add({
-      'userId': widget.userId,
-      'servicio': widget.negocio,
-      'fecha': fecha,
-      'hora': _horaSeleccionada,
-      'clase': _actividadSeleccionada,
-      'estado': 'activa',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+await _db.collection(_kColeccion).add({
+  _kCampoUserId: widget.userId,
+  _kCampoNegocioRef: negocioRef,
+  'negocioNombre': widget.negocio,
+
+  _kCampoClase: _actividadSeleccionada,
+
+  'claseRef': FirebaseFirestore.instance
+      .collection('clases')
+      .doc(_actividadSeleccionada),
+
+  _kCampoFecha: Timestamp.fromDate(fecha),
+  _kCampoHora: _horaSeleccionada,
+
+  'fechaHora': Timestamp.fromDate(DateTime(
+    fecha.year,
+    fecha.month,
+    fecha.day,
+    int.parse(_horaSeleccionada.split(':')[0]),
+    int.parse(_horaSeleccionada.split(':')[1]),
+  )),
+
+  _kCampoEstado: _kEstadoActiva,
+  'timestamp': FieldValue.serverTimestamp(),
+});
 
     _msg("Reserva confirmada");
 
@@ -163,9 +197,8 @@ class PeluqueriaPage extends StatefulWidget {
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
- 
- 
- @override
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -192,15 +225,15 @@ class PeluqueriaPage extends StatefulWidget {
           ),
         ),
       ),
-   body: Container(
+      body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFFFFFFFF), 
-              Color(0xFFFEFBDD), 
-              Color(0xFFE1D3BB), 
+              Color(0xFFFFFFFF),
+              Color(0xFFFEFBDD),
+              Color(0xFFE1D3BB),
               Color(0xFFD7A894),
             ],
             begin: Alignment.topCenter,
@@ -208,7 +241,7 @@ class PeluqueriaPage extends StatefulWidget {
           ),
         ),
 
-    child: SafeArea(
+        child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Center(
@@ -223,9 +256,9 @@ class PeluqueriaPage extends StatefulWidget {
                       height: 120,
                       fit: BoxFit.contain,
                     ),
-       const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                    // CALENDARIO
+                    
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.7),
@@ -271,11 +304,9 @@ class PeluqueriaPage extends StatefulWidget {
                       ),
                     ),
 
-              const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-
-
-                    // ACTIVIDAD
+                    
                     _buildDropdown(
                       label: "Actividad",
                       value: _actividadSeleccionada,
@@ -285,9 +316,9 @@ class PeluqueriaPage extends StatefulWidget {
                         _actualizarHorasDisponibles();
                       },
                     ),
-                 const SizedBox(height: 15),
+                    const SizedBox(height: 15),
 
-                    // HORA
+                    
                     _buildDropdown(
                       label: "Hora disponible",
                       value: _horaSeleccionada,
@@ -299,7 +330,7 @@ class PeluqueriaPage extends StatefulWidget {
 
                     const SizedBox(height: 35),
 
-                    // BOTÓN
+                    
                     SizedBox(
                       width: screenWidth * 0.7,
                       height: 55,
@@ -337,7 +368,7 @@ class PeluqueriaPage extends StatefulWidget {
                         ),
                       ),
                     ),
-                   const SizedBox(height: 30),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
@@ -348,7 +379,7 @@ class PeluqueriaPage extends StatefulWidget {
     );
   }
 
-    Widget _buildDropdown({
+  Widget _buildDropdown({
     required String label,
     required String value,
     required List<String> items,
@@ -362,7 +393,7 @@ class PeluqueriaPage extends StatefulWidget {
       ),
       child: DropdownButtonFormField<String>(
         isExpanded: true,
-       initialValue: value.isEmpty ? null : value,
+        initialValue: value.isEmpty ? null : value,
         decoration: const InputDecoration(
           labelText: '',
           border: InputBorder.none,
@@ -380,5 +411,3 @@ class PeluqueriaPage extends StatefulWidget {
     );
   }
 }
-
-

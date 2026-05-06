@@ -7,16 +7,14 @@ import 'package:gestion_cliente/notifications_service.dart';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const _kColeccion = 'reservas';
 const _kEstadoActiva = 'activa';
-const _kCampoServicio = 'servicio';
 const _kCampoFecha = 'fecha';
 const _kCampoHora = 'hora';
-const _kCampoClase = 'clase';
 const _kCampoEstado = 'estado';
 const _kCampoUserId = 'userId';
+
 const _kMaxReservas = 5;
 const _kMaxSlotsPorDia = 8;
 
-// Especialistas que trabajan los sábados
 const _kEspecialistasSabado = ['Especialista 4', 'Especialista 5'];
 
 // ─── Widget principal ──────────────────────────────────────────────────────────
@@ -52,28 +50,22 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
     'Especialista 5',
   ];
 
-  // Todos los turnos posibles
   final List<String> horariosTotales = [
-    '09:30',
-    '10:30',
-    '11:30',
-    '12:30',
-    '13:30',
-    '16:30',
-    '17:30',
-    '18:30',
+    '09:30','10:30','11:30','12:30','13:30','16:30','17:30','18:30',
   ];
 
-  // Turnos de mañana (disponibles en sábado, hasta las 13:30 inclusive)
   final List<String> horariosSabado = [
-    '09:30',
-    '10:30',
-    '11:30',
-    '12:30',
-    '13:30',
+    '09:30','10:30','11:30','12:30','13:30',
   ];
 
-  // ─── Lifecycle ───────────────────────────────────────────────────────────────
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
+
+  // 🔗 REFERENCIAS
+  DocumentReference get negocioRef =>
+      _db.collection('negocios').doc(widget.negocio);
+
+  DocumentReference claseRef(String claseId) =>
+      _db.collection('clases').doc(claseId);
 
   @override
   void initState() {
@@ -83,12 +75,8 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
     _horasDisponibles = List.from(horariosTotales);
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-  /// Devuelve solo la fecha sin hora, para comparar con Firestore.
   DateTime _soloFecha(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  /// Especialistas disponibles según el día seleccionado.
   List<String> get _especialistasFiltrados {
     if (_selectedDay == null) return [];
     return _selectedDay!.weekday == DateTime.saturday
@@ -96,15 +84,13 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         : ['Especialista 1', 'Especialista 2', 'Especialista 3'];
   }
 
-  FirebaseFirestore get _db => FirebaseFirestore.instance;
-
-  // ─── Firestore ───────────────────────────────────────────────────────────────
+  // ─── FIRESTORE ──────────────────────────────────────────────────────────────
 
   Future<void> _fetchBlockedDays() async {
     try {
       final snapshot = await _db
           .collection(_kColeccion)
-          .where(_kCampoServicio, isEqualTo: widget.negocio)
+          .where('negocioRef', isEqualTo: negocioRef)
           .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
           .get();
 
@@ -119,7 +105,7 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         setState(() => _reservasPorDia = contador);
       }
     } catch (e) {
-      _mostrar('Error al cargar el calendario. Inténtalo de nuevo.');
+      _mostrar('Error al cargar el calendario.');
     }
   }
 
@@ -128,13 +114,12 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
 
     final esSabado = _selectedDay!.weekday == DateTime.saturday;
 
-    // Los sábados solo pueden reservar los especialistas de sábado
     if (esSabado && !_kEspecialistasSabado.contains(_especialistaSeleccionado)) {
       setState(() {
         _horasDisponibles = [];
         _horaSeleccionada = '';
       });
-      _mostrar('Los sábados solo están disponibles Especialista 4 y 5');
+      _mostrar('Los sábados solo trabajan Especialista 4 y 5');
       return;
     }
 
@@ -145,18 +130,16 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
 
       final snapshot = await _db
           .collection(_kColeccion)
-          .where(_kCampoServicio, isEqualTo: widget.negocio)
-          .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fecha))
-          .where(_kCampoClase, isEqualTo: _especialistaSeleccionado)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('claseRef', isEqualTo: claseRef(_especialistaSeleccionado))
+          .where('fecha', isEqualTo: Timestamp.fromDate(fecha))
           .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
           .get();
 
       final ocupadas = snapshot.docs.map((e) => e[_kCampoHora] as String).toSet();
 
-      // Base: turnos del día (sábado → solo mañana, resto → todos)
       final base = esSabado ? horariosSabado : horariosTotales;
 
-      // Quitar los ya ocupados
       final disponibles = base.where((h) => !ocupadas.contains(h)).toList();
 
       setState(() {
@@ -166,7 +149,7 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         }
       });
     } catch (e) {
-      _mostrar('Error al cargar los horarios. Inténtalo de nuevo.');
+      _mostrar('Error al cargar horarios');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -180,71 +163,62 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
       return;
     }
 
-    // Guardar estos valores ANTES de cualquier setState que los limpie
     final diaReserva = _soloFecha(_selectedDay!);
     final horaReserva = _horaSeleccionada;
-    final especialistaReserva = _especialistaSeleccionado;
-    final esSabado = _selectedDay!.weekday == DateTime.saturday;
 
-    
+    final claseReferencia = claseRef(_especialistaSeleccionado);
 
-    // Validar sábado antes de ir a Firestore
-    if (esSabado && !_kEspecialistasSabado.contains(especialistaReserva)) {
-      _mostrar('Los sábados solo están disponibles Especialista 4 y 5');
-      return;
-    }
+    final partesHora = horaReserva.split(':');
+
+    final fechaCompleta = DateTime(
+      diaReserva.year,
+      diaReserva.month,
+      diaReserva.day,
+      int.parse(partesHora[0]),
+      int.parse(partesHora[1]),
+    );
 
     setState(() => _loading = true);
 
     try {
-      // Comprobar límite de reservas activas del usuario
-      final misReservas = await _db
-          .collection(_kColeccion)
-          .where(_kCampoUserId, isEqualTo: widget.userId)
-          .where(_kCampoServicio, isEqualTo: widget.negocio)
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
-          .get();
+      // VALIDACIONES
+     final misReservas = await _db
+        .collection(_kColeccion)
+        .where(_kCampoUserId, isEqualTo: widget.userId)
+        .where('negocioRef', isEqualTo: negocioRef)
+        .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+        .get();
 
       if (misReservas.docs.length >= _kMaxReservas) {
-        _mostrar('Máximo $_kMaxReservas reservas activas');
-        return;
+        throw Exception('Máximo $_kMaxReservas reservas activas');
       }
 
-      // Comprobar que el slot sigue libre (evitar doble reserva)
       final check = await _db
           .collection(_kColeccion)
-          .where(_kCampoServicio, isEqualTo: widget.negocio)
-          .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(diaReserva))
-          .where(_kCampoClase, isEqualTo: especialistaReserva)
-          .where(_kCampoHora, isEqualTo: horaReserva)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('claseRef', isEqualTo: claseReferencia)
+          .where('fecha', isEqualTo: Timestamp.fromDate(diaReserva))
+          .where('hora', isEqualTo: horaReserva)
           .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
           .get();
 
       if (check.docs.isNotEmpty) {
-        _mostrar('Esa hora ya no está disponible');
-        await _actualizarHorasDisponibles(); // refrescar UI
-        return;
+        throw Exception('Hora ocupada');
       }
 
-      //Añadido para crear notificaciones.
-      final partesHora = horaReserva.split(':');
+      // GUARDAR
+      final docRef = _db.collection(_kColeccion).doc();
 
-      final fechaCompleta = DateTime(
-        diaReserva.year,
-        diaReserva.month,
-        diaReserva.day,
-        int.parse(partesHora[0]),
-        int.parse(partesHora[1]),
-      );
-      // Crear la reserva
-      await _db.collection(_kColeccion).add({
-        _kCampoUserId: widget.userId,
-        _kCampoServicio: widget.negocio,
-        _kCampoFecha: Timestamp.fromDate(diaReserva),
-        _kCampoHora: horaReserva,
-        _kCampoClase: especialistaReserva,
-        _kCampoEstado: _kEstadoActiva,
+      await docRef.set({
+        'userId': widget.userId,
+        'negocioRef': negocioRef,
+        'claseRef': claseReferencia,
+        'negocioNombre': widget.negocio,
+        'claseNombre': _especialistaSeleccionado,
+        'fecha': Timestamp.fromDate(diaReserva),
+        'hora': horaReserva,
         'fechaHora': Timestamp.fromDate(fechaCompleta),
+        'estado': _kEstadoActiva,
         'timestamp': FieldValue.serverTimestamp(),
       });
 
@@ -259,19 +233,15 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         _horasDisponibles = List.from(horariosTotales);
       });
 
-      try {
-        await NotificationsService.scheduleNotification(
-          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          servicio: widget.negocio,
-          especialista: especialistaReserva,
-          scheduledDate: fechaCompleta,
-        );
-      } catch (e) {
-        debugPrint('Error al programar notificación: $e');
-      }
+      await NotificationsService.scheduleNotification(
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        servicio: widget.negocio,
+        especialista: _especialistaSeleccionado,
+        scheduledDate: fechaCompleta.subtract(const Duration(hours: 24)),
+      );
 
     } catch (e) {
-      _mostrar('Error al realizar la reserva. Inténtalo de nuevo.');
+      _mostrar(e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -282,6 +252,7 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
+
 
   // ─── Build ────────────────────────────────────────────────────────────────────
 

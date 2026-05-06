@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gestion_cliente/screens/services_screen.dart';
-import 'package:gestion_cliente/screens/profile_page.dart';
 import 'package:gestion_cliente/screens/servicios/academia_page.dart';
 import 'package:gestion_cliente/screens/servicios/fisioterapia_page.dart';
 import 'package:gestion_cliente/screens/servicios/gimnasio_page.dart';
@@ -205,10 +204,7 @@ onTapCancel: () => setState(() {
             icon: Icon(Icons.info_outline, size: sizeIcono, color: Colors.white),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ServicePage())),
           ),
-          IconButton(
-            icon: Icon(Icons.person, size: sizeIcono, color: Colors.white),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
-          ),
+
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -312,8 +308,8 @@ onTapCancel: () => setState(() {
                   color: const Color(0xFF93C5FD),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   child: ListTile(
-                    title: Text('${data['servicio']}'),
-                    subtitle: Text('${data['clase']}\n📅 ${DateFormat('dd/MM/yyyy').format((data['fecha'] as Timestamp).toDate())}\n⏰ ${data['hora']}'),
+                    title: Text('${data['negocioNombre']}'),
+                    subtitle: Text('${data['claseNombre']}\n📅 ${DateFormat('dd/MM/yyyy').format((data['fecha'] as Timestamp).toDate())}\n⏰ ${data['hora']}'),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => _confirmarEliminacion(docId),
@@ -384,4 +380,4 @@ class _FloatingHandState extends State<FloatingHand> with SingleTickerProviderSt
       child: const Icon(Icons.waving_hand, size: 40, color: Color(0xFF64B5F6)),
     );
   }
-}
+} 

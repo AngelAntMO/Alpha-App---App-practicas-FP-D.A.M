@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 class WorkerCheckScreen extends StatefulWidget {
   const WorkerCheckScreen({super.key});
@@ -9,7 +10,9 @@ class WorkerCheckScreen extends StatefulWidget {
   State<WorkerCheckScreen> createState() => _WorkerCheckScreenState();
 }
 
-class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
+class _WorkerCheckScreenState extends State<WorkerCheckScreen>
+    with SingleTickerProviderStateMixin {
+
   final user = FirebaseAuth.instance.currentUser;
 
   bool isLoading = true;
@@ -24,10 +27,34 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
   bool showHistory = false;
   List<Map<String, dynamic>> weeklyHistory = [];
 
+  DateTime? checkInTime;
+  Duration workedLive = Duration.zero;
+
+  int selectedYear = DateTime.now().year;
+
+  late final Ticker _ticker;
+
   @override
   void initState() {
     super.initState();
+
+    _ticker = Ticker((_) {
+      if (isWorking && checkInTime != null) {
+        setState(() {
+          workedLive = DateTime.now().difference(checkInTime!);
+        });
+      }
+    });
+
+    _ticker.start();
+
     init();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
   }
 
   Future<void> init() async {
@@ -40,17 +67,23 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
     setState(() => isLoading = false);
   }
 
+  // ─────────────────────────────────────────────
+  // USER
+  // ─────────────────────────────────────────────
   Future<void> loadUser() async {
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user!.uid)
         .get();
 
-    name = doc['nombre'] ?? "";
-    surname = doc['apellidos'] ?? "";
-    clase = doc['clase'] ?? "";
+    name = doc.data()?['nombre'] ?? "";
+    surname = doc.data()?['apellidos'] ?? "";
+    clase = doc.data()?['clase'] ?? "";
   }
 
+  // ─────────────────────────────────────────────
+  // STATUS
+  // ─────────────────────────────────────────────
   Future<void> loadCurrentStatus() async {
     final query = await FirebaseFirestore.instance
         .collection('time_logs')
@@ -60,10 +93,21 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
         .get();
 
     isWorking = query.docs.isNotEmpty;
-    setState(() {});
+
+    if (isWorking) {
+      final doc = query.docs.first;
+      checkInTime = (doc['checkIn'] as Timestamp).toDate();
+    } else {
+      checkInTime = null;
+      workedLive = Duration.zero;
+    }
+
+    if (mounted) setState(() {});
   }
 
-  // ================= CHECK IN =================
+  // ─────────────────────────────────────────────
+  // CHECK IN
+  // ─────────────────────────────────────────────
   Future<void> checkIn() async {
     final existing = await FirebaseFirestore.instance
         .collection('time_logs')
@@ -76,15 +120,17 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
 
     await FirebaseFirestore.instance.collection('time_logs').add({
       'employeeId': user!.uid,
-      'checkIn': Timestamp.now(), // clave
-      'checkInServer': FieldValue.serverTimestamp(),
+      'clase': clase,
+      'checkIn': Timestamp.now(),
       'status': 'open',
     });
 
     await loadCurrentStatus();
   }
 
-  // ================= CHECK OUT =================
+  // ─────────────────────────────────────────────
+  // CHECK OUT
+  // ─────────────────────────────────────────────
   Future<void> checkOut() async {
     final query = await FirebaseFirestore.instance
         .collection('time_logs')
@@ -102,7 +148,6 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
 
     final hours = diff.inMinutes / 60;
 
-    // 🚫 evita fichajes basura
     if (hours < 0.02) {
       await doc.reference.delete();
       await loadCurrentStatus();
@@ -121,81 +166,89 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
     ]);
   }
 
-  // ================= HORAS SEMANALES =================
+  // ─────────────────────────────────────────────
+  // WEEKLY HOURS
+  // ─────────────────────────────────────────────
   Future<void> loadWeeklyHours() async {
-    DateTime now = DateTime.now();
-    DateTime start =
-        now.subtract(Duration(days: now.weekday - 1));
+    final now = DateTime.now();
 
-    DateTime end = start.add(const Duration(days: 7));
+    final startOfWeek = DateTime(
+      now.subtract(Duration(days: now.weekday - 1)).year,
+      now.subtract(Duration(days: now.weekday - 1)).month,
+      now.subtract(Duration(days: now.weekday - 1)).day,
+    );
+
+    final endOfWeek = startOfWeek.add(const Duration(days: 7));
 
     final query = await FirebaseFirestore.instance
         .collection('time_logs')
         .where('employeeId', isEqualTo: user!.uid)
-        .where('checkIn', isGreaterThanOrEqualTo: start)
-        .where('checkIn', isLessThan: end)
+        .where('checkIn',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeek))
+        .where('checkIn', isLessThan: Timestamp.fromDate(endOfWeek))
         .get();
 
     double total = 0;
 
     for (var doc in query.docs) {
-      if (doc.data().containsKey('workedHours')) {
-        total += (doc['workedHours'] as num).toDouble();
+      final data = doc.data();
+      if (data.containsKey('workedHours')) {
+        total += (data['workedHours'] as num).toDouble();
       }
     }
 
     weeklyHours = total;
-    setState(() {});
+
+    if (mounted) setState(() {});
   }
 
-  // ================= HISTORIAL =================
+  // ─────────────────────────────────────────────
+  // HISTORY (ESCALABLE)
+  // ─────────────────────────────────────────────
   Future<void> loadWeeklyHistory() async {
-    DateTime now = DateTime.now();
-    DateTime limit = now.subtract(const Duration(days: 60));
-
     final query = await FirebaseFirestore.instance
         .collection('time_logs')
         .where('employeeId', isEqualTo: user!.uid)
-        .where('checkIn', isGreaterThan: limit)
         .get();
 
-    Map<String, double> weeks = {};
+    Map<DateTime, double> weeks = {};
 
     for (var doc in query.docs) {
-      if (!doc.data().containsKey('workedHours') ||
-          !doc.data().containsKey('checkIn')) {
-             continue;
-          }
+      final data = doc.data();
+      if (!data.containsKey('workedHours')) continue;
 
-      DateTime date = (doc['checkIn'] as Timestamp).toDate();
+      final date = (data['checkIn'] as Timestamp).toDate();
 
-      DateTime start =
-          date.subtract(Duration(days: date.weekday - 1));
+      if (date.year != selectedYear) continue;
 
-      String key = "${start.year}-${start.month}-${start.day}";
+      final startOfWeek = DateTime(
+        date.subtract(Duration(days: date.weekday - 1)).year,
+        date.subtract(Duration(days: date.weekday - 1)).month,
+        date.subtract(Duration(days: date.weekday - 1)).day,
+      );
 
-      weeks[key] = (weeks[key] ?? 0) +
-          (doc['workedHours'] as num).toDouble();
+      weeks[startOfWeek] =
+          (weeks[startOfWeek] ?? 0) +
+          (data['workedHours'] as num).toDouble();
     }
 
     weeklyHistory = weeks.entries.map((e) {
-      DateTime start = DateTime.parse(e.key);
-      DateTime end = start.add(const Duration(days: 6));
-
       return {
-        'start': start,
-        'end': end,
+        'start': e.key,
+        'end': e.key.add(const Duration(days: 6)),
         'hours': e.value,
       };
     }).toList();
 
     weeklyHistory.sort((a, b) =>
-        b['start'].compareTo(a['start']));
+        (b['start'] as DateTime).compareTo(a['start'] as DateTime));
 
     setState(() {});
   }
 
-  // ================= UI =================
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -209,17 +262,12 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
       backgroundColor: const Color(0xFF1E293B),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text("Fichaje trabajador"),
-        leading: const SizedBox(), // evita avatar raro
+        title: const Text("⏱ Fichaje trabajador"),
       ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF1E293B),
-              Color(0xFF334155),
-              Color(0xFF64B5F6),
-            ],
+            colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)],
           ),
         ),
         child: SafeArea(
@@ -231,34 +279,26 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
                 child: Column(
                   children: [
 
-                    Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text("👋", style: TextStyle(fontSize: 24)),
-                        const SizedBox(width: 10),
-                        Text(
-                          "$name $surname",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      "👋 $name $surname",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
 
-                    const SizedBox(height: 35),
+                    const SizedBox(height: 20),
 
                     _toggle(),
 
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 20),
 
                     Expanded(
-                      child: showHistory
-                          ? _history()
-                          : _main(),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: showHistory ? _history() : _main(),
+                      ),
                     ),
                   ],
                 ),
@@ -270,6 +310,7 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────
   Widget _toggle() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -286,71 +327,86 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
       onTap: () async {
         setState(() => showHistory = text == "Historial");
 
-        if (showHistory && weeklyHistory.isEmpty) {
+        if (showHistory) {
           await loadWeeklyHistory();
         }
       },
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
-          color: active
-              ? Colors.blueAccent
-              : Colors.white.withValues(alpha: 0.08),
+          color: active ? Colors.blueAccent : Colors.white12,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(text,
-            style: const TextStyle(color: Colors.white)),
+        child: Text(text, style: const TextStyle(color: Colors.white)),
       ),
     );
   }
 
+  // ─────────────────────────────────────────────
   Widget _main() {
     return Column(
       children: [
-        _card(
+
+        // ESTADO
+        Text(
+          isWorking ? "🟢 Trabajando" : "🔴 No fichado",
+          style: const TextStyle(color: Colors.white),
+        ),
+
+        const SizedBox(height: 10),
+
+        // RELOJ EN VIVO
+        if (isWorking && checkInTime != null)
           Column(
             children: [
               Text(
-                isWorking ? "🟢 Trabajando" : "🔴 No fichado",
-                style: const TextStyle(color: Colors.white),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 60,
-                width: 260,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isWorking ? Colors.redAccent : Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  onPressed: () {
-                    isWorking ? checkOut() : checkIn();
-                  },
-                  child: Text(
-                    isWorking
-                        ? "FICHAR SALIDA"
-                        : "FICHAR ENTRADA",
-                  ),
+                "⏱ ${_formatDuration(workedLive)}",
+                style: const TextStyle(
+                  fontSize: 28,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
+              const Text(
+                "Tiempo trabajado",
+                style: TextStyle(color: Colors.white70),
               ),
             ],
           ),
+
+        const SizedBox(height: 20),
+
+        // BOTÓN
+        SizedBox(
+          width: 260,
+          height: 55,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isWorking ? Colors.red : Colors.green,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            onPressed: isWorking ? checkOut : checkIn,
+            child: Text(
+              isWorking ? "FICHAR SALIDA" : "FICHAR ENTRADA",
+            ),
+          ),
         ),
-        const SizedBox(height: 25),
+
+        const SizedBox(height: 20),
+
+        // HORAS SEMANA
         _card(
           Column(
             children: [
-              const Text("📊 Horas semanales",
+              const Text("📅 Horas semanales",
                   style: TextStyle(color: Colors.white)),
               const SizedBox(height: 10),
               Text(
                 "${weeklyHours.toStringAsFixed(2)} h",
                 style: const TextStyle(
-                  fontSize: 26,
+                  fontSize: 30,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -362,45 +418,82 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────
   Widget _history() {
-    return ListView.builder(
-      itemCount: weeklyHistory.length,
-      itemBuilder: (_, i) {
-        final w = weeklyHistory[i];
+    return Column(
+      children: [
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _card(
-            Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "${w['start'].day}/${w['start'].month}/${w['start'].year} - "
-                  "${w['end'].day}/${w['end'].month}/${w['end'].year}",
-                  style: const TextStyle(color: Colors.white),
+        // AÑO
+        DropdownButton<int>(
+          value: selectedYear,
+          dropdownColor: const Color(0xFF1E293B),
+          style: const TextStyle(color: Colors.white),
+          items: List.generate(5, (i) {
+            final year = DateTime.now().year - i;
+            return DropdownMenuItem(
+              value: year,
+              child: Text("📅 $year"),
+            );
+          }),
+          onChanged: (val) async {
+            setState(() => selectedYear = val!);
+            await loadWeeklyHistory();
+          },
+        ),
+
+        const SizedBox(height: 10),
+
+        Expanded(
+          child: ListView.builder(
+            itemCount: weeklyHistory.length,
+            itemBuilder: (_, i) {
+              final w = weeklyHistory[i];
+
+              return _card(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "📆 ${(w['start'] as DateTime).day}/${(w['start'] as DateTime).month} - "
+                      "${(w['end'] as DateTime).day}/${(w['end'] as DateTime).month}",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    Text(
+                      "⏱ ${(w['hours'] as double).toStringAsFixed(1)}h",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ],
                 ),
-                Text(
-                  "${w['hours'].toStringAsFixed(1)} h",
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
+  // ─────────────────────────────────────────────
   Widget _card(Widget child) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.white12,
         borderRadius: BorderRadius.circular(20),
       ),
       child: child,
     );
+  }
+
+  // ─────────────────────────────────────────────
+  String _formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+
+    return "${h.toString().padLeft(2, '0')}:"
+        "${m.toString().padLeft(2, '0')}:"
+        "${s.toString().padLeft(2, '0')}";
   }
 }
