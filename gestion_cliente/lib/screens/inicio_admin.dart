@@ -321,6 +321,391 @@ class _InicioAdminState extends State<InicioAdmin> {
   }
 }
 
+// ─── DIÁLOGO AÑADIR SERVICIO ───────────────────────────────────────────────
+
+Future<void> _mostrarDialogoNuevoServicio(BuildContext context, Negocio negocio, VoidCallback onCreado) async {
+  final nombreCtrl    = TextEditingController();
+  final precioCtrl    = TextEditingController();
+  final duracionCtrl  = TextEditingController();
+  final descCtrl      = TextEditingController();
+  bool activo         = true;
+  final color         = negocio.color;
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setModalState) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1E293B), Color(0xFF334155)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              // Título
+              Row(children: [
+                Icon(negocio.icono, color: color, size: 22),
+                const SizedBox(width: 10),
+                Text('Nuevo servicio · ${negocio.nombre}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 20),
+              _fieldModal('Nombre del servicio', nombreCtrl, Icons.label, color),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: _fieldModal('Precio (€)', precioCtrl, Icons.euro, color, isNumber: true)),
+                const SizedBox(width: 12),
+                Expanded(child: _fieldModal('Duración (min)', duracionCtrl, Icons.timer, color, isNumber: true)),
+              ]),
+              const SizedBox(height: 12),
+              _fieldModal('Descripción', descCtrl, Icons.description, color, maxLines: 2),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                ),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero, dense: true,
+                  title: const Text('Activo desde el inicio', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: activo, activeColor: color,
+                  onChanged: (v) => setModalState(() => activo = v),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Cancelar'),
+                )),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: ElevatedButton(
+                  onPressed: () {
+                    if (nombreCtrl.text.trim().isEmpty) return;
+                    negocio.servicios.add(Servicio(
+                      nombre: nombreCtrl.text.trim(),
+                      precio: double.tryParse(precioCtrl.text) ?? 0,
+                      duracionMinutos: int.tryParse(duracionCtrl.text) ?? 60,
+                      descripcion: descCtrl.text.trim(),
+                      activo: activo,
+                    ));
+                    Navigator.pop(ctx);
+                    onCreado();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color, foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Crear servicio', style: TextStyle(fontWeight: FontWeight.w600)),
+                )),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  nombreCtrl.dispose(); precioCtrl.dispose(); duracionCtrl.dispose(); descCtrl.dispose();
+}
+
+// ─── DIÁLOGO AÑADIR TRABAJADOR ─────────────────────────────────────────────
+
+Future<void> _mostrarDialogoNuevoTrabajador(BuildContext context, Negocio negocio, VoidCallback onCreado) async {
+  final nombreCtrl = TextEditingController();
+  final emailCtrl  = TextEditingController();
+  final telCtrl    = TextEditingController();
+  bool activo      = true;
+  List<String> serviciosSeleccionados = [];
+  final color      = negocio.color;
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setModalState) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1E293B), Color(0xFF334155)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              Row(children: [
+                Icon(negocio.icono, color: color, size: 22),
+                const SizedBox(width: 10),
+                Text('Nuevo trabajador · ${negocio.nombre}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 20),
+              _fieldModal('Nombre completo', nombreCtrl, Icons.person, color),
+              const SizedBox(height: 12),
+              _fieldModal('Email', emailCtrl, Icons.email, color),
+              const SizedBox(height: 12),
+              _fieldModal('Teléfono', telCtrl, Icons.phone, color),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                ),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero, dense: true,
+                  title: const Text('Activo desde el inicio', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: activo, activeColor: color,
+                  onChanged: (v) => setModalState(() => activo = v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text('Servicios asignados', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              ...negocio.servicios.map((s) {
+                final sel = serviciosSeleccionados.contains(s.nombre);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: GestureDetector(
+                    onTap: () => setModalState(() {
+                      if (sel) serviciosSeleccionados.remove(s.nombre);
+                      else serviciosSeleccionados.add(s.nombre);
+                    }),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: sel ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: sel ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      child: Row(children: [
+                        Icon(sel ? Icons.check_circle : Icons.radio_button_unchecked, color: sel ? color : Colors.white38, size: 18),
+                        const SizedBox(width: 10),
+                        Text(s.nombre, style: TextStyle(color: sel ? Colors.white : Colors.white60, fontSize: 13)),
+                      ]),
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Cancelar'),
+                )),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: ElevatedButton(
+                  onPressed: () {
+                    if (nombreCtrl.text.trim().isEmpty) return;
+                    trabajadores.add(Trabajador(
+                      nombre: nombreCtrl.text.trim(),
+                      email: emailCtrl.text.trim(),
+                      telefono: telCtrl.text.trim(),
+                      negocioNombre: negocio.nombre,
+                      activo: activo,
+                      serviciosAsignados: List.from(serviciosSeleccionados),
+                    ));
+                    Navigator.pop(ctx);
+                    onCreado();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color, foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Añadir trabajador', style: TextStyle(fontWeight: FontWeight.w600)),
+                )),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  nombreCtrl.dispose(); emailCtrl.dispose(); telCtrl.dispose();
+}
+
+// ─── DIÁLOGO AÑADIR USUARIO ────────────────────────────────────────────────
+
+Future<void> _mostrarDialogoNuevoUsuario(BuildContext context, Negocio negocio, VoidCallback onCreado) async {
+  final nombreCtrl = TextEditingController();
+  final emailCtrl  = TextEditingController();
+  final telCtrl    = TextEditingController();
+  bool activo      = true;
+  final color      = negocio.color;
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setModalState) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1E293B), Color(0xFF334155)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              Row(children: [
+                Icon(negocio.icono, color: color, size: 22),
+                const SizedBox(width: 10),
+                Text('Nuevo usuario · ${negocio.nombre}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 20),
+              _fieldModal('Nombre completo', nombreCtrl, Icons.person, color),
+              const SizedBox(height: 12),
+              _fieldModal('Email', emailCtrl, Icons.email, color),
+              const SizedBox(height: 12),
+              _fieldModal('Teléfono', telCtrl, Icons.phone, color),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                ),
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero, dense: true,
+                  title: const Text('Activo desde el inicio', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: activo, activeColor: color,
+                  onChanged: (v) => setModalState(() => activo = v),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Cancelar'),
+                )),
+                const SizedBox(width: 12),
+                Expanded(flex: 2, child: ElevatedButton(
+                  onPressed: () {
+                    if (nombreCtrl.text.trim().isEmpty) return;
+                    usuarios.add(Usuario(
+                      nombre: nombreCtrl.text.trim(),
+                      email: emailCtrl.text.trim(),
+                      telefono: telCtrl.text.trim(),
+                      activo: activo,
+                      negocioNombre: negocio.nombre,
+                    ));
+                    Navigator.pop(ctx);
+                    onCreado();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color, foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Añadir usuario', style: TextStyle(fontWeight: FontWeight.w600)),
+                )),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  nombreCtrl.dispose(); emailCtrl.dispose(); telCtrl.dispose();
+}
+
+// ─── FIELD PARA MODALES ────────────────────────────────────────────────────
+
+Widget _fieldModal(String label, TextEditingController ctrl, IconData icon, Color accent,
+    {bool isNumber = false, int maxLines = 1}) =>
+  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
+    const SizedBox(height: 4),
+    TextFormField(
+      controller: ctrl, maxLines: maxLines,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      style: const TextStyle(color: Colors.white, fontSize: 13),
+      decoration: _inputDeco(icon, accent),
+    ),
+  ]);
+
+// ─── BOTÓN AÑADIR ──────────────────────────────────────────────────────────
+
+Widget _botonAnadir({required Color color, required String label, required VoidCallback onTap}) =>
+  Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.add_circle_outline, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ),
+  );
+
 // ─── TAB NEGOCIO ───────────────────────────────────────────────────────────
 
 class _NegocioTab extends StatefulWidget {
@@ -340,6 +725,11 @@ class _NegocioTabState extends State<_NegocioTab> {
         _SelectorNegocios(
           seleccionado: _negocioSeleccionado,
           onSeleccionado: (i) => setState(() => _negocioSeleccionado = i),
+        ),
+        _botonAnadir(
+          color: negocio.color,
+          label: 'Añadir servicio a ${negocio.nombre}',
+          onTap: () => _mostrarDialogoNuevoServicio(context, negocio, () => setState(() {})),
         ),
         Expanded(
           child: ListView.builder(
@@ -394,7 +784,7 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
   }
 
   void _reset() {
-    final s = widget.servicio;
+    final s       = widget.servicio;
     _nombreCtrl   = TextEditingController(text: s.nombre);
     _precioCtrl   = TextEditingController(text: s.precio.toStringAsFixed(0));
     _duracionCtrl = TextEditingController(text: s.duracionMinutos.toString());
@@ -409,7 +799,7 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
   }
 
   void _guardar() {
-    final s = widget.servicio;
+    final s           = widget.servicio;
     s.nombre          = _nombreCtrl.text;
     s.precio          = double.tryParse(_precioCtrl.text) ?? s.precio;
     s.duracionMinutos = int.tryParse(_duracionCtrl.text) ?? s.duracionMinutos;
@@ -467,11 +857,7 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
                 ])),
                 _badge(s.activo),
                 const SizedBox(width: 6),
-                AnimatedRotation(
-                  turns: _expandido ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22),
-                ),
+                AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
               ]),
             ),
           ),
@@ -503,11 +889,7 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
       const SizedBox(height: 10),
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-        ),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
         child: SwitchListTile(
           contentPadding: EdgeInsets.zero, dense: true,
           title: const Text('Servicio activo', style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -521,8 +903,7 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
     ]),
   );
 
-  Widget _field(String label, TextEditingController ctrl, IconData icon, Color accent,
-      {bool isNumber = false, int maxLines = 1}) =>
+  Widget _field(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
       const SizedBox(height: 4),
@@ -550,24 +931,23 @@ class _TrabajadoresTabState extends State<_TrabajadoresTab> {
       trabajadores.where((t) => t.negocioNombre == negocios[_negocioSeleccionado].nombre).toList();
 
   void _eliminar(Trabajador t) {
-    showDialog(
+    showDialog(context: context, builder: (_) => _dialogConfirm(
       context: context,
-      builder: (_) => _dialogConfirm(
-        context: context,
-        titulo: 'Dar de baja trabajador',
-        mensaje: '¿Eliminar a ${t.nombre} del sistema?',
-        onConfirm: () { setState(() => trabajadores.remove(t)); Navigator.pop(context); },
-      ),
-    );
+      titulo: 'Dar de baja trabajador',
+      mensaje: '¿Eliminar a ${t.nombre} del sistema?',
+      onConfirm: () { setState(() => trabajadores.remove(t)); Navigator.pop(context); },
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final negocio = negocios[_negocioSeleccionado];
     return Column(children: [
-      _SelectorNegocios(
-        seleccionado: _negocioSeleccionado,
-        onSeleccionado: (i) => setState(() => _negocioSeleccionado = i),
+      _SelectorNegocios(seleccionado: _negocioSeleccionado, onSeleccionado: (i) => setState(() => _negocioSeleccionado = i)),
+      _botonAnadir(
+        color: negocio.color,
+        label: 'Añadir trabajador a ${negocio.nombre}',
+        onTap: () => _mostrarDialogoNuevoTrabajador(context, negocio, () => setState(() {})),
       ),
       Expanded(
         child: _filtrados.isEmpty
@@ -672,10 +1052,7 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
-            width: _expandido ? 1.5 : 1,
-          ),
+          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1),
         ),
         child: Column(children: [
           InkWell(
@@ -687,10 +1064,7 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: color.withValues(alpha: 0.25),
-                  child: Text(
-                    t.nombre.isNotEmpty ? t.nombre[0].toUpperCase() : '?',
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+                  child: Text(t.nombre.isNotEmpty ? t.nombre[0].toUpperCase() : '?', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -700,11 +1074,7 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
                 ])),
                 _badge(t.activo),
                 const SizedBox(width: 6),
-                AnimatedRotation(
-                  turns: _expandido ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22),
-                ),
+                AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
               ]),
             ),
           ),
@@ -734,20 +1104,12 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-          ),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
           child: SwitchListTile(
             contentPadding: EdgeInsets.zero, dense: true,
             title: const Text('Trabajador activo', style: TextStyle(color: Colors.white, fontSize: 13)),
-            subtitle: Text(
-              _activo ? 'Visible en el sistema' : 'Dado de baja temporalmente',
-              style: const TextStyle(color: Colors.white60, fontSize: 11),
-            ),
-            value: _activo, activeColor: color,
-            onChanged: (v) => setState(() => _activo = v),
+            subtitle: Text(_activo ? 'Visible en el sistema' : 'Dado de baja temporalmente', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v),
           ),
         ),
         const SizedBox(height: 12),
@@ -758,10 +1120,7 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: GestureDetector(
-              onTap: () => setState(() {
-                if (asignado) _servicios.remove(nombre);
-                else _servicios.add(nombre);
-              }),
+              onTap: () => setState(() { if (asignado) _servicios.remove(nombre); else _servicios.add(nombre); }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -808,24 +1167,23 @@ class _UsuariosTabState extends State<_UsuariosTab> {
       usuarios.where((u) => u.negocioNombre == negocios[_negocioSeleccionado].nombre).toList();
 
   void _eliminar(Usuario u) {
-    showDialog(
+    showDialog(context: context, builder: (_) => _dialogConfirm(
       context: context,
-      builder: (_) => _dialogConfirm(
-        context: context,
-        titulo: 'Dar de baja usuario',
-        mensaje: '¿Eliminar a ${u.nombre}? Esta acción no se puede deshacer.',
-        onConfirm: () { setState(() => usuarios.remove(u)); Navigator.pop(context); },
-      ),
-    );
+      titulo: 'Dar de baja usuario',
+      mensaje: '¿Eliminar a ${u.nombre}? Esta acción no se puede deshacer.',
+      onConfirm: () { setState(() => usuarios.remove(u)); Navigator.pop(context); },
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     final negocio = negocios[_negocioSeleccionado];
     return Column(children: [
-      _SelectorNegocios(
-        seleccionado: _negocioSeleccionado,
-        onSeleccionado: (i) => setState(() => _negocioSeleccionado = i),
+      _SelectorNegocios(seleccionado: _negocioSeleccionado, onSeleccionado: (i) => setState(() => _negocioSeleccionado = i)),
+      _botonAnadir(
+        color: negocio.color,
+        label: 'Añadir usuario a ${negocio.nombre}',
+        onTap: () => _mostrarDialogoNuevoUsuario(context, negocio, () => setState(() {})),
       ),
       Expanded(
         child: _filtrados.isEmpty
@@ -928,10 +1286,7 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
-            width: _expandido ? 1.5 : 1,
-          ),
+          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1),
         ),
         child: Column(children: [
           InkWell(
@@ -943,10 +1298,7 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: color.withValues(alpha: 0.25),
-                  child: Text(
-                    u.nombre.isNotEmpty ? u.nombre[0].toUpperCase() : '?',
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+                  child: Text(u.nombre.isNotEmpty ? u.nombre[0].toUpperCase() : '?', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -956,11 +1308,7 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
                 ])),
                 _badge(u.activo),
                 const SizedBox(width: 6),
-                AnimatedRotation(
-                  turns: _expandido ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22),
-                ),
+                AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
               ]),
             ),
           ),
@@ -988,20 +1336,12 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
       const SizedBox(height: 10),
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-        ),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
         child: SwitchListTile(
           contentPadding: EdgeInsets.zero, dense: true,
           title: const Text('Usuario activo', style: TextStyle(color: Colors.white, fontSize: 13)),
-          subtitle: Text(
-            _activo ? 'Acceso habilitado' : 'Acceso suspendido',
-            style: const TextStyle(color: Colors.white60, fontSize: 11),
-          ),
-          value: _activo, activeColor: color,
-          onChanged: (v) => setState(() => _activo = v),
+          subtitle: Text(_activo ? 'Acceso habilitado' : 'Acceso suspendido', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+          value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v),
         ),
       ),
       const SizedBox(height: 14),
@@ -1035,33 +1375,20 @@ Widget _badge(bool activo) => Container(
     color: activo ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
     borderRadius: BorderRadius.circular(20),
   ),
-  child: Text(
-    activo ? 'Activo' : 'Inactivo',
-    style: TextStyle(color: activo ? Colors.greenAccent : Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w500),
-  ),
+  child: Text(activo ? 'Activo' : 'Inactivo', style: TextStyle(color: activo ? Colors.greenAccent : Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w500)),
 );
 
 Widget _botonesGuardar(Color color, {required VoidCallback onCancelar, required VoidCallback onGuardar}) =>
   Row(children: [
     Expanded(child: OutlinedButton(
       onPressed: onCancelar,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white70,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+      style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
       child: const Text('Cancelar', style: TextStyle(fontSize: 13)),
     )),
     const SizedBox(width: 10),
     Expanded(flex: 2, child: ElevatedButton(
       onPressed: onGuardar,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color, foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        elevation: 0,
-      ),
+      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
       child: const Text('Guardar cambios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
     )),
   ]);
@@ -1070,57 +1397,38 @@ Widget _botonesConBaja(Color color, {required VoidCallback onBaja, required Void
   Row(children: [
     Expanded(child: OutlinedButton(
       onPressed: onBaja,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.redAccent,
-        side: const BorderSide(color: Colors.redAccent),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+      style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
       child: const Text('Dar de baja', style: TextStyle(fontSize: 11)),
     )),
     const SizedBox(width: 8),
     Expanded(child: OutlinedButton(
       onPressed: onCancelar,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white70,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+      style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
       child: const Text('Cancelar', style: TextStyle(fontSize: 11)),
     )),
     const SizedBox(width: 8),
     Expanded(child: ElevatedButton(
       onPressed: onGuardar,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color, foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        elevation: 0,
-      ),
+      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
       child: const Text('Guardar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
     )),
   ]);
 
-Widget _dialogConfirm({
-  required BuildContext context,
-  required String titulo,
-  required String mensaje,
-  required VoidCallback onConfirm,
-}) => AlertDialog(
-  backgroundColor: const Color(0xFF1E293B),
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-  title: Text(titulo, style: const TextStyle(color: Colors.white)),
-  content: Text(mensaje, style: const TextStyle(color: Colors.white70)),
-  actions: [
-    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.white60))),
-    ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-      onPressed: onConfirm,
-      child: const Text('Eliminar'),
-    ),
-  ],
-);
+Widget _dialogConfirm({required BuildContext context, required String titulo, required String mensaje, required VoidCallback onConfirm}) =>
+  AlertDialog(
+    backgroundColor: const Color(0xFF1E293B),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    title: Text(titulo, style: const TextStyle(color: Colors.white)),
+    content: Text(mensaje, style: const TextStyle(color: Colors.white70)),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.white60))),
+      ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        onPressed: onConfirm,
+        child: const Text('Eliminar'),
+      ),
+    ],
+  );
 
 // ─── PLACEHOLDER ───────────────────────────────────────────────────────────
 
