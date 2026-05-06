@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 
 
-
 class AgendaWorkerPage extends StatefulWidget {
   const AgendaWorkerPage({super.key});
   
@@ -14,8 +13,24 @@ class AgendaWorkerPage extends StatefulWidget {
   State<AgendaWorkerPage> createState() => _AgendaWorkerPageState();
 }
 
+  bool _hasNewReservas = false;
+  int _previousCount = 0;
+
 class _AgendaWorkerPageState extends State<AgendaWorkerPage> {
   int _previousCount = 0;
+
+final user = FirebaseAuth.instance.currentUser;
+
+  Stream<List<String>> getClasesDelEmpleado() {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+
+  return FirebaseFirestore.instance
+      .collection('clases')
+      .where('employeeID', isEqualTo: uid)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) => doc.id).toList());
+}
+
 
 Widget build(BuildContext context) {
   final user = FirebaseAuth.instance.currentUser;
@@ -48,11 +63,30 @@ Widget build(BuildContext context) {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
 
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('reservas')
-            .where('claseNombre', isEqualTo: 'Matemáticas')
-            .snapshots(),
+      body: StreamBuilder<List<String>>(
+  stream: getClasesDelEmpleado(),
+  builder: (context, clasesSnapshot) {
+
+    if (!clasesSnapshot.hasData) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final claseNombre = clasesSnapshot.data!;
+
+    if (claseNombre.isEmpty) {
+      return const Center(
+        child: Text(
+          'No tienes clases asignadas',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('reservas')
+          .where('employeeID', isEqualTo: user!.uid.trim())
+          .snapshots(),
 
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -69,6 +103,10 @@ Widget build(BuildContext context) {
           }
 
           final reservas = snapshot.data!.docs;
+
+          if (_previousCount != 0 && reservas.length > _previousCount) {
+          _hasNewReservas = true;
+      }
 
           if (reservas.length > _previousCount) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -229,8 +267,10 @@ _previousCount = reservas.length;
             },
           );
         },
-      ),
+      );
+  }
     ),
+  )
   );
 }
 }
