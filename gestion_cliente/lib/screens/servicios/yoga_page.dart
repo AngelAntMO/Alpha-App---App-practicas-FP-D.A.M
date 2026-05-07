@@ -13,6 +13,7 @@ const _kCampoUserId = 'userId';
 const _kCampoNegocioRef = 'negocioRef';
 const _kCampoClase = 'claseNombre';
 const _kMaxPorHora = 10;
+const _kMaxReservas = 3;
 
 class YogaPage extends StatefulWidget {
   final String userId;
@@ -151,29 +152,7 @@ class _YogaPageState extends State<YogaPage> {
         _selectedDay!.day,
       );
 
-      final check = await FirebaseFirestore.instance
-          .collection(_kColeccion)
-          .where(_kCampoNegocioRef, isEqualTo: negocioRef)
-          .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fechaBusqueda))
-          .where(_kCampoClase, isEqualTo: _claseSeleccionada)
-          .where(_kCampoHora, isEqualTo: _horaSeleccionada)
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
-          .get();
-
-      bool yaExiste = check.docs.any((d) => d[_kCampoUserId] == widget.userId);
-
-      if (yaExiste) {
-        _mensaje("Ya tienes una reserva en esta clase");
-        setState(() => _loading = false);
-        return;
-      }
-
-      if (check.docs.length >= 10) {
-        _mensaje("Cupo lleno");
-        setState(() => _loading = false);
-        return;
-      }
-
+      // VALIDACIONES
       final partesHora = _horaSeleccionada.split(':');
       final fechaCompleta = DateTime(
         fechaBusqueda.year,
@@ -182,6 +161,33 @@ class _YogaPageState extends State<YogaPage> {
         int.parse(partesHora[0]),
         int.parse(partesHora[1]),
       );
+
+
+      final misReservas = await _db
+        .collection(_kColeccion)
+        .where(_kCampoUserId, isEqualTo: widget.userId)
+        .where('negocioRef', isEqualTo: negocioRef)
+        .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+        .get();
+
+      if (misReservas.docs.length >= _kMaxReservas) {
+        throw Exception('Máximo $_kMaxReservas reservas activas');
+      }
+
+       final claseDoc = await FirebaseFirestore.instance
+        .collection('clases')
+        .doc(_claseSeleccionada)
+        .get();
+
+    if (!claseDoc.exists) {
+      throw Exception('La clase no existe');
+    }
+
+    final employeeID = claseDoc.data()?['employeeID'];
+
+    if (employeeID == null || employeeID.toString().isEmpty) {
+      throw Exception('La clase no tiene employeeID asignado');
+    }
 
       await FirebaseFirestore.instance.collection(_kColeccion).add({
         _kCampoUserId: widget.userId,
@@ -202,6 +208,8 @@ class _YogaPageState extends State<YogaPage> {
         _kCampoHora: _horaSeleccionada,
 
         'fechaHora': Timestamp.fromDate(fechaCompleta),
+
+         'employeeID': employeeID,
 
         _kCampoEstado: _kEstadoActiva,
 

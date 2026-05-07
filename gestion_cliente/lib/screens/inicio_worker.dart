@@ -43,38 +43,23 @@ void initState() {
 }
 
 void _listenReservas() {
-  FirebaseAuth.instance.authStateChanges().listen((user) async {
-    if (user == null) return;
+  FirebaseFirestore.instance
+      .collection('reservas')
+      .snapshots()
+      .listen((snapshot) {
 
-    final querySnapshot = await FirebaseFirestore.instance
-    .collection('clases')
-    .where('employeeID', isEqualTo: user.uid)
-    .limit(1)
-    .get();
+    int currentCount = snapshot.docs.length;
 
-    if (querySnapshot.docs.isEmpty) return;
+    if (currentCount > _previousCount) {
+      setState(() {
+        _hasNewReservas = true;
+      });
+    }
 
-    // Si solo hay una clase por empleado
-    String clase = querySnapshot.docs.first['nombre'];
-
-    FirebaseFirestore.instance
-        .collection('reservas')
-        .where('clase', isEqualTo: clase)
-        .snapshots()
-        .listen((snapshot) {
-
-      int currentCount = snapshot.docs.length;
-
-      if (currentCount > _previousCount) {
-        setState(() {
-          _hasNewReservas = true;
-        });
-      }
-
-      _previousCount = currentCount;
-    });
+    _previousCount = currentCount;
   });
 }
+
   @override
   void dispose() {
     _controller.dispose();

@@ -25,7 +25,7 @@ final user = FirebaseAuth.instance.currentUser;
   final uid = FirebaseAuth.instance.currentUser?.uid;
 
   return FirebaseFirestore.instance
-      .collection('clases')
+      .collection('reservas')
       .where('employeeID', isEqualTo: uid)
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => doc.id).toList());

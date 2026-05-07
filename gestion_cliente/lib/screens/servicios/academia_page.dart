@@ -167,6 +167,22 @@ class _AcademiaPageState extends State<AcademiaPage> {
     setState(() => _loading = true);
 
     try {
+
+       final claseDoc = await FirebaseFirestore.instance
+        .collection('clases')
+        .doc(_claseSeleccionada)
+        .get();
+
+    if (!claseDoc.exists) {
+      throw Exception('La clase no existe');
+    }
+
+    final employeeID = claseDoc.data()?['employeeID'];
+
+    if (employeeID == null || employeeID.toString().isEmpty) {
+      throw Exception('La clase no tiene employeeID asignado');
+    }
+
       await _db.runTransaction((transaction) async {
         final reservasRef = _db.collection(_kColeccion);
 
@@ -211,6 +227,8 @@ class _AcademiaPageState extends State<AcademiaPage> {
             : user?.email ?? 'Usuario desconocido',
 
           'claseNombre': _claseSeleccionada,
+
+           'employeeID': employeeID,
 
           'claseRef': FirebaseFirestore.instance
               .collection('clases')
