@@ -1,12 +1,30 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:gestion_cliente/screens/inicio_worker.dart';
+import 'login_screen.dart';
 
 class WorkerProfilePage extends StatelessWidget {
   const WorkerProfilePage({super.key});
 
+  final List<String> avatarOptions = const [
+    "assets/images/moureperfil.png",
+    "assets/images/acaperfil.png",
+    "assets/images/peluqueriaperfil.png",
+    "assets/images/perfilfisio.png",
+    "assets/images/perfilgimnasio.png",
+    "assets/images/yogaperfil.png",
+    "assets/images/tazaperfil.png",
+    "assets/images/tazasuciaperfil.png",
+  ];
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+
+    double screenWidth = MediaQuery.of(context).size.width;
+    double containerWidth = screenWidth > 700 ? 500 : screenWidth * 0.9;
 
     return Container(
       decoration: const BoxDecoration(
@@ -14,9 +32,9 @@ class WorkerProfilePage extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
+            Color(0xFF0F172A),
             Color(0xFF1E293B),
             Color(0xFF334155),
-            Color(0xFF64B5F6),
           ],
         ),
       ),
@@ -26,200 +44,791 @@ class WorkerProfilePage extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text(
-            "Panel de trabajador",
-            style: TextStyle(color: Colors.white),
-          ),
           centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70),
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-              },
-            )
-          ],
+          title: const Text(
+            "Perfil trabajador",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => InicioWorker()),
+                (route) => false,
+              );
+            },
+          ),
         ),
 
-       body: Center(
-  child: SingleChildScrollView(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 700),
-      child: Column(
-        children: [
+        body: Center(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: SizedBox(
+              width: containerWidth,
+              child: Column(
+                children: [
 
-          const SizedBox(height: 30),
+                  _buildHeader(user),
 
-          
-          Container(
-            padding: const EdgeInsets.all(20),
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-              ),
-            ),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 45,
-                  backgroundColor: const Color(0xFF64B5F6),
-                  child: Text(
-                    user?.email != null
-                        ? user!.email![0].toUpperCase()
-                        : "W",
-                    style: const TextStyle(
-                      fontSize: 28,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 30),
+
+                  AnimatedMenuButton(
+                    icon: Icons.person_outline,
+                    title: "Editar perfil",
+                    onTap: () {
+                      if (user != null) {
+                        _showEditWorkerProfile(context, user.uid);
+                      }
+                    },
+                  ),
+
+
+
+                  AnimatedMenuButton(
+                    icon: Icons.calendar_month,
+                    title: "Mis horarios",
+                    onTap: () {
+                      if (user != null) {
+                        _showSchedules(context, user.uid);
+                      }
+                    },
+                  ),
+
+                  AnimatedMenuButton(
+                    icon: Icons.work_outline,
+                    title: "Mis tareas",
+                    onTap: () {
+                      if (user != null) {
+                        _showTasks(context, user.uid);
+                      }
+                    },
+                  ),
+
+                  AnimatedMenuButton(
+                    icon: Icons.history,
+                    title: "Historial de fichajes",
+                    onTap: () {
+                      if (user != null) {
+                        _showCheckHistory(context, user.uid);
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 40),
+                    child: Divider(
+                      color: Colors.white10,
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 25),
 
-                Text(
-                  user?.email ?? "Worker",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                   AnimatedLogoutButton(
+                    text: "Cerrar sesión",
+                    onTap: () async {
+                      final bool? confirmar = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            backgroundColor: const Color(0xFF1E293B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            title: const Text(
+                              "Cerrar sesión",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: const Text(
+                              "¿Estás seguro de que quieres cerrar sesión?",
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context, false);
+                                },
+                                child: const Text(
+                                  "Cancelar",
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(context, true);
+                                },
+                                child: const Text(
+                                  "Cerrar sesión",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirmar == true) {
+                        await FirebaseAuth.instance.signOut();
+
+                        if (!context.mounted) return;
+
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                          (route) => false,
+                        );
+                      }
+                    },
                   ),
-                ),
 
-                const SizedBox(height: 5),
-
-                const Text(
-                  "Trabajador activo",
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ],
+                  const SizedBox(height: 50),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
 
-          const SizedBox(height: 30),
+  Widget _buildHeader(User? user) {
+    if (user == null) return const SizedBox();
 
-          
-          Column(
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('workers')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+
+        if (!snapshot.hasData) {
+          return const CircularProgressIndicator(
+            color: Colors.blueAccent,
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+
+        final nombre = data['nombre'] ?? "";
+        final apellidos = data['apellidos'] ?? "";
+        final puesto = data['puesto'] ?? "Trabajador";
+        final empresa = data['empresa'] ?? "";
+        final avatar = data['avatar'];
+
+        String iniciales = "W";
+
+        if (nombre.isNotEmpty) {
+          iniciales = nombre[0].toUpperCase();
+        }
+
+        return Column(
+          children: [
+
+            GestureDetector(
+              onTap: () {
+                _showAvatarPicker(context, user.uid);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.blueAccent.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: const Color(0xFF64B5F6),
+                  backgroundImage: avatar != null
+                      ? AssetImage(avatar)
+                      : null,
+                  child: avatar == null
+                      ? Text(
+                          iniciales,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            Text(
+              "$nombre $apellidos",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 5),
+
+            Text(
+              puesto,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+
+            const SizedBox(height: 5),
+
+            Text(
+              empresa,
+              style: const TextStyle(
+                color: Colors.white38,
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.greenAccent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+
+                  Icon(
+                    Icons.verified,
+                    color: Colors.greenAccent,
+                    size: 18,
+                  ),
+
+                  SizedBox(width: 8),
+
+                  Text(
+                    "Trabajador activo",
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAvatarPicker(BuildContext context, String uid) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+
+        return Container(
+          height: 320,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(30),
+            ),
+          ),
+          child: GridView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: avatarOptions.length,
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 15,
+              mainAxisSpacing: 15,
+            ),
+            itemBuilder: (context, index) {
+
+              final avatar = avatarOptions[index];
+
+              return GestureDetector(
+                onTap: () async {
+
+                  await FirebaseFirestore.instance
+                      .collection('workers')
+                      .doc(uid)
+                      .set({
+                    'avatar': avatar,
+                  }, SetOptions(merge: true));
+
+                  if (!context.mounted) return;
+
+                  Navigator.pop(context);
+                },
+                child: CircleAvatar(
+                  backgroundImage: AssetImage(avatar),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditWorkerProfile(
+    BuildContext context,
+    String uid,
+  ) async {
+
+    final doc = await FirebaseFirestore.instance
+        .collection('workers')
+        .doc(uid)
+        .get();
+
+    final data = doc.data() ?? {};
+
+    final nameController = TextEditingController(
+      text: data['nombre'] ?? '',
+    );
+
+    final lastController = TextEditingController(
+      text: data['apellidos'] ?? '',
+    );
+
+    final phoneController = TextEditingController(
+      text: data['telefono'] ?? '',
+    );
+
+    final addressController = TextEditingController(
+      text: data['direccion'] ?? '',
+    );
+
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(30),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: _WorkerButton(
-                  icon: Icons.access_time,
-                  title: "Fichar entrada / salida",
-                  color: const Color(0xFF64B5F6),
-                  onTap: () {},
-                ),
-              ),
 
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: _WorkerButton(
-                  icon: Icons.calendar_month,
-                  title: "Mis horarios",
-                  color: Colors.white24,
-                  onTap: () {},
-                ),
-              ),
+              _buildInput(nameController, "Nombre"),
+              _buildInput(lastController, "Apellidos"),
+              _buildInput(phoneController, "Teléfono"),
+              _buildInput(addressController, "Dirección"),
+             
 
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: _WorkerButton(
-                  icon: Icons.work_outline,
-                  title: "Mis tareas",
-                  color: Colors.white24,
-                  onTap: () {},
-                ),
-              ),
+              const SizedBox(height: 15),
 
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: _WorkerButton(
-                  icon: Icons.history,
-                  title: "Historial de fichajes",
-                  color: Colors.white24,
-                  onTap: () {},
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+
+                    await FirebaseFirestore.instance
+                        .collection('workers')
+                        .doc(uid)
+                        .set({
+
+                      'nombre': nameController.text.trim(),
+                      'apellidos': lastController.text.trim(),
+                      'telefono': phoneController.text.trim(),
+                      'direccion': addressController.text.trim(),
+                     
+
+                    }, SetOptions(merge: true));
+
+                    if (!context.mounted) return;
+
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Guardar cambios"),
                 ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
 
-          const SizedBox(height: 30),
-        ],
-      ),
-    ),
-  ),
-),
+
+
+  void _showSchedules(BuildContext context, String uid) {
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+
+        return Container(
+          height: 400,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(30),
+            ),
+          ),
+          child: const Center(
+            child: Text(
+              "Aquí aparecerán los horarios",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTasks(BuildContext context, String uid) {
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+
+        return Container(
+          height: 400,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(30),
+            ),
+          ),
+          child: const Center(
+            child: Text(
+              "Aquí aparecerán las tareas",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCheckHistory(
+    BuildContext context,
+    String uid,
+  ) {
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(30),
+            ),
+          ),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('workers')
+                .doc(uid)
+                .collection('fichajes')
+                .orderBy('fecha', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+
+              final docs = snapshot.data!.docs;
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+
+                  final data =
+                      docs[index].data() as Map<String, dynamic>;
+
+                  final fecha =
+                      (data['fecha'] as Timestamp).toDate();
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.access_time,
+                        color: Colors.greenAccent,
+                      ),
+                      title: Text(
+                        "${fecha.day}/${fecha.month}/${fecha.year}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "${fecha.hour}:${fecha.minute}",
+                        style: const TextStyle(
+                          color: Colors.white54,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInput(
+    TextEditingController controller,
+    String hint,
+  ) {
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(
+            color: Colors.white54,
+          ),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.05),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
       ),
     );
   }
 }
 
-class _WorkerButton extends StatefulWidget {
+class AnimatedMenuButton extends StatefulWidget {
+
   final IconData icon;
   final String title;
-  final Color color;
   final VoidCallback onTap;
 
-  const _WorkerButton({
+  const AnimatedMenuButton({
+    super.key,
     required this.icon,
     required this.title,
-    required this.color,
     required this.onTap,
   });
 
   @override
-  State<_WorkerButton> createState() => _WorkerButtonState();
+  State<AnimatedMenuButton> createState() =>
+      _AnimatedMenuButtonState();
 }
 
-class _WorkerButtonState extends State<_WorkerButton> {
+class _AnimatedMenuButtonState
+    extends State<AnimatedMenuButton> {
+
   bool pressed = false;
 
   @override
   Widget build(BuildContext context) {
+
     return GestureDetector(
       onTapDown: (_) => setState(() => pressed = true),
+
       onTapUp: (_) {
         setState(() => pressed = false);
         widget.onTap();
       },
+
       onTapCancel: () => setState(() => pressed = false),
+
       child: AnimatedScale(
         duration: const Duration(milliseconds: 120),
         scale: pressed ? 0.96 : 1.0,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.1),
             ),
-            boxShadow: pressed
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
-                    )
-                  ]
-                : [],
           ),
-          child: Row(
-            children: [
-              Icon(widget.icon, color: widget.color),
-              const SizedBox(width: 15),
-              Text(
-                widget.title,
-                style: const TextStyle(color: Colors.white),
+
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 10,
+                sigmaY: 10,
               ),
-              const Spacer(),
-              const Icon(Icons.arrow_forward_ios,
-                  color: Colors.white24, size: 14),
-            ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
+                child: Row(
+                  children: [
+
+                    Icon(
+                      widget.icon,
+                      color: const Color(0xFF64B5F6),
+                    ),
+
+                    const SizedBox(width: 15),
+
+                    Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white24,
+                      size: 14,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AnimatedLogoutButton extends StatefulWidget {
+
+  final String text;
+  final VoidCallback onTap;
+
+  const AnimatedLogoutButton({
+    super.key,
+    required this.text,
+    required this.onTap,
+  });
+
+  @override
+  State<AnimatedLogoutButton> createState() =>
+      _AnimatedLogoutButtonState();
+}
+
+class _AnimatedLogoutButtonState
+    extends State<AnimatedLogoutButton> {
+
+  bool pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => pressed = true),
+
+      onTapUp: (_) {
+        setState(() => pressed = false);
+        widget.onTap();
+      },
+
+      onTapCancel: () => setState(() => pressed = false),
+
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: pressed ? 0.95 : 1.0,
+
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+
+          decoration: BoxDecoration(
+            color: Colors.redAccent,
+            borderRadius: BorderRadius.circular(20),
+          ),
+
+          child: Center(
+            child: Text(
+              widget.text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
           ),
         ),
       ),
