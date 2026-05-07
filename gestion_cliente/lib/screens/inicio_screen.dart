@@ -111,20 +111,6 @@ class _PaginaInicioState extends State<PaginaInicio>
               fit: BoxFit.contain,
             ),
           ),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.person, size: iconSize, color: Colors.white),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70),
-              onPressed: () => FirebaseAuth.instance.signOut(),
-            ),
-            const SizedBox(width: 10),
-          ],
         ),
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
