@@ -20,6 +20,9 @@ class ProfilePage extends StatelessWidget {
     "assets/images/tazasuciaperfil.png",
   ];
 
+
+  
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -203,7 +206,7 @@ class ProfilePage extends StatelessWidget {
           );
         }
 
-        String nombreCompleto = "Usuario";
+        String nombreCompleto = user.displayName ?? "Usuario";
         String email = user.email ?? "Sin correo";
         String iniciales = "U";
         String? avatarUrl;
@@ -475,18 +478,36 @@ class ProfilePage extends StatelessWidget {
 
     final data = doc.data() ?? {};
 
-    final nameController = TextEditingController(text: data['nombre'] ?? '');
-    final lastNameController = TextEditingController(
-      text: data['apellidos'] ?? '',
-    );
-    final addressController = TextEditingController(
-      text: data['direccion'] ?? '',
-    );
-    final phoneController = TextEditingController(text: data['telefono'] ?? '');
+    final user = FirebaseAuth.instance.currentUser;
+
+    final googleName = user?.displayName ?? "";
+
+
+    String nombre = data['nombre'] ?? "";
+String apellidos = data['apellidos'] ?? "";
+
+// 🔥 Si no hay datos en Firestore, usar Google
+if (nombre.isEmpty && googleName.isNotEmpty) {
+  final partes = googleName.split(" ");
+  nombre = partes.first;
+  apellidos = partes.length > 1 ? partes.sublist(1).join(" ") : "";
+}
+
+  final nameController = TextEditingController(text: nombre);
+  final lastNameController = TextEditingController(text: apellidos);
+  final addressController = TextEditingController(
+    text: data['direccion'] ?? '',
+  );
+  final phoneController = TextEditingController(
+  text: data['telefono'] ?? '',
+);
+    
 
     DateTime? birthDate = data['fechaNacimiento'] != null
         ? (data['fechaNacimiento'] as Timestamp).toDate()
         : null;
+
+        
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1092,6 +1113,8 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
+
+
 class AnimatedMenuButton extends StatefulWidget {
   final IconData icon;
   final String title;
@@ -1264,3 +1287,4 @@ class _AnimatedLogoutButtonState extends State<AnimatedLogoutButton> {
     );
   }
 }
+  

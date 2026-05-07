@@ -1,299 +1,269 @@
+import 'dart:math';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import 'package:gestion_cliente/screens/root_page.dart';
-
-
 import 'register_screen.dart';
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
-
 class _LoginPageState extends State<LoginPage> {
+  final String _masterPasswordActual = "ADMIN1234";
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController otpController = TextEditingController();
+  final TextEditingController masterPassController = TextEditingController();
 
-
-  bool _buttonPressed = false;
   bool _isLoading = false;
+  bool _isAdminMode = false;
+  String? _generatedCode;
 
-
-  Future<void> saveFcmToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-
-  final messaging = FirebaseMessaging.instance;
-
-
-  // pedir permisos (solo la primera vez)
-  await messaging.requestPermission();
-
-
-  // obtener token del dispositivo
-  String? token = await messaging.getToken();
-
-
-  debugPrint("FCM TOKEN: $token");
-
-
-  if (token != null) {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .update({
-          'fcmToken': token,
-        });
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    otpController.dispose();
+    masterPassController.dispose();
+    super.dispose();
   }
 
-
-  // si el token cambia en el futuro
-  messaging.onTokenRefresh.listen((newToken) async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .update({
-          'fcmToken': newToken,
-        });
-  });
-}
-
-
-
-
-  Future<void> login() async {
-    setState(() => _isLoading = true);
-
-
-    try {
-      // 2. Intento de inicio de sesión
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-
-
-      // 3. Verificación de montaje
-      if (!mounted) return;
-
-
-      // 4. NAVEGACIÓN CRÍTICA:
-      // Usamos pushAndRemoveUntil para limpiar la memoria de la pantalla de login
-      // y evitar que el usuario pueda volver atrás al login con el botón del móvil.
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const RootPage()),
-        (route) => false,
-      );
-    } on FirebaseAuthException catch (e) {
-      String errorMsg = "Ocurrió un error";
-      if (e.code == 'user-not-found') {
-        errorMsg = "Usuario no encontrado";
-      } else if (e.code == 'wrong-password') {
-        errorMsg = "Contraseña incorrecta";
-      } else if (e.code == 'invalid-email') {
-        errorMsg = "Email no válido";
-      }
-      _mostrarMensaje(errorMsg);
-    } catch (e) {
-      _mostrarMensaje("Error inesperado: $e");
-    } finally {
-      // Solo quitamos el loading si seguimos en esta pantalla
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+  void _gestionarCambioAdmin(bool? valor) {
+    if (valor == true) {
+      masterPassController.clear();
+      _mostrarPopUpMasterPass();
+    } else {
+      setState(() => _isAdminMode = false);
     }
   }
 
-
-  // Asegúrate de que el método se llame así o cámbialo en el catch
-  void _mostrarMensaje(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
-    );
-  }
-
-
-  @override
-  Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E293B),
-            Color(0xFF334155),
-            Color(0xFF64B5F6),
+  void _mostrarPopUpMasterPass() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("🔐 Clave Maestra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          content: SizedBox(
+            width: 300,
+            child: _glassField(
+              TextField(
+                controller: masterPassController,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(border: InputBorder.none, hintText: "••••", hintStyle: TextStyle(color: Colors.white24)),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancelar", style: TextStyle(color: Colors.white54))),
+            ElevatedButton(
+              onPressed: () {
+                if (masterPassController.text == _masterPasswordActual) {
+                  setState(() => _isAdminMode = true);
+                  Navigator.pop(dialogContext);
+                } else {
+                  _mostrarMensaje("Clave incorrecta");
+                }
+              },
+              child: const Text("Entrar"),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _mostrarMensaje("Rellena todos los campos");
+      return;
+    }
+
+    if (_isAdminMode) {
+      setState(() => _isLoading = true);
+      _procederLoginFirebase(email, password);
+    } else {
+      _generatedCode = (Random().nextInt(900000) + 100000).toString();
+      _sendEmail(email, _generatedCode!); 
+      _mostrarPopUpGmail(email, password);
+    }
+  }
+
+  void _mostrarPopUpGmail(String email, String password) {
+    otpController.clear();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text("Verificación", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            content: SizedBox(
+              width: 300,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("Código enviado al email", style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 20),
+                  _glassField(
+                    TextField(
+                      controller: otpController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 5),
+                      decoration: const InputDecoration(border: InputBorder.none, hintText: "000000", hintStyle: TextStyle(color: Colors.white24, letterSpacing: 0)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cerrar", style: TextStyle(color: Colors.white54))),
+              ElevatedButton(
+                onPressed: () async {
+                  if (otpController.text == _generatedCode) {
+                    Navigator.pop(dialogContext);
+                    setState(() => _isLoading = true);
+                    _procederLoginFirebase(email, password);
+                  } else {
+                    _mostrarMensaje("Código incorrecto");
+                  }
+                },
+                child: const Text("Verificar"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _procederLoginFirebase(String email, String password) async {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        FirebaseMessaging.instance.getToken().then((token) {
+          if (token != null) {
+            FirebaseFirestore.instance.collection('users').doc(user.uid).set({'fcmToken': token}, SetOptions(merge: true));
+          }
+        }).catchError((e) => debugPrint("Error FCM ignorado: $e"));
+      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      Future.microtask(() {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const RootPage()), (route) => false);
+      });
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _mostrarMensaje("Error: ${e.message}");
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _mostrarMensaje("Error inesperado");
+    }
+  }
+
+  Future<void> _sendEmail(String email, String code) async {
+    try {
+      await http.post(
+        Uri.parse('https://api.emailjs.com/api/v1.0/email/send'),
+        headers: {'Content-Type': 'application/json', 'origin': 'http://localhost'},
+        body: json.encode({
+          'service_id': 'service_sziirym',
+          'template_id': 'template_ecuyrkp',
+          'user_id': 'NRbnnLuNptqqUU1eb',
+          'template_params': {'user_email': email, 'passcode': code, 'time': '15 minutos'}
+        }),
+      );
+    } catch (e) { debugPrint("EmailJS Error: $e"); }
+  }
+
+  void _mostrarMensaje(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.redAccent));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)]),
+      ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: Navigator.canPop(context)
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                )
-              : null,
-          title: const Text('Iniciar sesión'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: screenWidth * 0.10,
-              right: screenWidth * 0.10,
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
+        appBar: AppBar(title: const Text('Iniciar sesión', style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent, elevation: 0),
+        body: Center(
+          child: SingleChildScrollView(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Image.asset('assets/images/LogoAlphaAppPagInicio.png', width: 180, errorBuilder: (c, e, s) => const Icon(Icons.lock, size: 50, color: Colors.white)),
                 const SizedBox(height: 40),
-
-
-                // LOGO
-                Image.asset(
-                  'assets/images/LogoAlphaAppPagInicio.png',
-                  width: 180,
-                ),
-
-
-                const SizedBox(height: 40),
-
-
-                _glassField(
-                  AnimatedTextField(
-                    label: 'Email',
-                    controller: emailController,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-
-
-                const SizedBox(height: 20),
-
-
-                _glassField(
-                  AnimatedTextField(
-                    label: 'Contraseña',
-                    obscureText: true,
-                    controller: passwordController,
-                    textInputAction: TextInputAction
-                        .done, // Esto cambia el icono del teclado a un "Check" o "Done"
-                    onSubmitted:
-                        login, // Al pulsar el botón del teclado, llama a login()
-                  ),
-                ),
-
-
-                const SizedBox(height: 30),
-
-
-                // BOTÓN
-                GestureDetector(
-                  onTapDown: (_) {
-                    setState(() => _buttonPressed = true);
-                  },
-                  onTapUp: (_) {
-                    setState(() => _buttonPressed = false);
-                    login();
-                  },
-                  onTapCancel: () {
-                    setState(() => _buttonPressed = false);
-                  },
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 120),
-                    curve: Curves.easeOut,
-                    scale: _buttonPressed ? 0.96 : 1.0,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      height: 55,
-                      width: double.infinity,
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: _buttonPressed
-                              ? [
-                                  const Color(0xFF2F6FE4),
-                                  const Color(0xFF4D94FF),
-                                ]
-                              : [
-                                  const Color(0xFF3B82F6),
-                                  const Color(0xFF60A5FA),
-                                ],
+                
+                // LONGITUD AJUSTADA A 350
+                SizedBox(
+                  width: 350,
+                  child: Column(
+                    children: [
+                      _glassField(AnimatedTextField(label: 'Email', controller: emailController, textInputAction: TextInputAction.next)),
+                      const SizedBox(height: 20),
+                      _glassField(AnimatedTextField(label: 'Contraseña', isPasswordField: true, controller: passwordController, onSubmitted: login)),
+                      const SizedBox(height: 15),
+                      _glassField(
+                        CheckboxListTile(
+                          title: const Text("Acceso Admin", style: TextStyle(color: Colors.white, fontSize: 13)),
+                          value: _isAdminMode,
+                          activeColor: Colors.blueAccent,
+                          onChanged: _gestionarCambioAdmin,
+                          controlAffinity: ListTileControlAffinity.leading,
                         ),
-                        boxShadow: _buttonPressed
-                            ? [
-                                BoxShadow(
-                                  color: Colors.blueAccent.withValues(
-                                    alpha: 0.25,
-                                  ),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: Colors.blueAccent.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
                       ),
-                      child: Center(
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                'Iniciar sesión',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 30),
+                GestureDetector(
+                  onTap: _isLoading ? null : login,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 55, width: 220,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)]),
+                    ),
+                    child: Center(
+                      child: _isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white) 
+                        : const Text('Entrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
-
-
                 const SizedBox(height: 20),
-
-
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RegisterPage()),
-                    );
-                  },
-                  child: const Text(
-                    '¿No tienes cuenta? Regístrate',
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
+                  child: const Text('¿No tienes cuenta? Regístrate', style: TextStyle(color: Colors.white70)),
                 ),
               ],
             ),
@@ -303,104 +273,45 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-
-  // GLASS EFFECT
   Widget _glassField(Widget child) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-              ),
-              child: child,
-            ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
+          child: child,
         ),
       ),
     );
   }
 }
 
-
-// TEXTFIELD
-class AnimatedTextField extends StatefulWidget {
+class AnimatedTextField extends StatelessWidget {
   final String label;
-  final bool obscureText;
+  final bool isPasswordField;
   final TextEditingController controller;
   final TextInputAction? textInputAction;
   final VoidCallback? onSubmitted;
-
-
-  const AnimatedTextField({
-    required this.label,
-    this.obscureText = false,
-    required this.controller,
-    this.textInputAction,
-    this.onSubmitted,
-    super.key,
-  });
-
-
-  @override
-  State<AnimatedTextField> createState() => _AnimatedTextFieldState();
-}
-
-
-class _AnimatedTextFieldState extends State<AnimatedTextField> {
-  final FocusNode _focusNode = FocusNode();
-  bool _hasFocus = false;
-
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() {
-      setState(() => _hasFocus = _focusNode.hasFocus);
-    });
-  }
-
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
+  const AnimatedTextField({required this.label, this.isPasswordField = false, required this.controller, this.textInputAction, this.onSubmitted, super.key});
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
+      obscureText: isPasswordField,
       style: const TextStyle(color: Colors.white),
-      controller: widget.controller,
-      focusNode: _focusNode,
-      obscureText: widget.obscureText,
-      textInputAction:
-          widget.textInputAction, // 'next' para email, 'done' para password
-      // Cambia/asegúrate de que esto esté así:
-      onSubmitted: (value) {
-        if (widget.onSubmitted != null) {
-          widget.onSubmitted!();
-        }
-      },
-
-
+      textInputAction: textInputAction,
+      onSubmitted: (_) => onSubmitted?.call(),
       decoration: InputDecoration(
-        hintStyle: TextStyle(color: _hasFocus ? Colors.white : Colors.white70),
-        hintText: widget.label,
-
-
+        hintText: label,
+        hintStyle: const TextStyle(color: Colors.white60),
         border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 18,
-        ),
+        contentPadding: const EdgeInsets.all(16),
       ),
     );
   }
