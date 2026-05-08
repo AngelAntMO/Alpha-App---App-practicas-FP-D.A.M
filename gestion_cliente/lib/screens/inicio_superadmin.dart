@@ -37,18 +37,22 @@ class Trabajador {
   String nombre;
   String email;
   String telefono;
-  String negocioNombre;
   bool activo;
-  List<String> serviciosAsignados;
+  Map<String, List<String>> negociosYServicios;
+  Map<String, bool> esAdminEn;
 
   Trabajador({
     required this.nombre,
     required this.email,
     required this.telefono,
-    required this.negocioNombre,
     required this.activo,
-    required this.serviciosAsignados,
+    required this.negociosYServicios,
+    required this.esAdminEn,
   });
+
+  List<String> get negociosAsignados => negociosYServicios.keys.toList();
+  List<String> serviciosEnNegocio(String negocio) => negociosYServicios[negocio] ?? [];
+  bool isAdminEn(String negocio) => esAdminEn[negocio] ?? false;
 }
 
 class Usuario {
@@ -56,15 +60,17 @@ class Usuario {
   String email;
   String telefono;
   bool activo;
-  String negocioNombre;
+  Map<String, List<String>> negociosYServicios;
 
   Usuario({
     required this.nombre,
     required this.email,
     required this.telefono,
     required this.activo,
-    required this.negocioNombre,
+    required this.negociosYServicios,
   });
+
+  List<String> get negociosAsignados => negociosYServicios.keys.toList();
 }
 
 // ─── DATOS ─────────────────────────────────────────────────────────────────
@@ -419,6 +425,12 @@ List<Usuario> usuarios = [
   ),
 ];
 
+// ─── HELPERS ───────────────────────────────────────────────────────────────
+
+Negocio? _negocioPorNombre(String nombre) {
+  try { return negocios.firstWhere((n) => n.nombre == nombre); } catch (_) { return null; }
+}
+
 // ─── SELECTOR DE NEGOCIOS ──────────────────────────────────────────────────
 
 class _SelectorNegocios extends StatelessWidget {
@@ -480,6 +492,12 @@ class _SelectorNegocios extends StatelessWidget {
                       ),
                     ],
                   ),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(n.icono, color: selected ? n.color : Colors.white54, size: 20),
+                    const SizedBox(height: 4),
+                    Text(n.nombre, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: selected ? Colors.white : Colors.white60, fontSize: 9, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+                  ]),
                 ),
               ),
             ),
@@ -490,7 +508,7 @@ class _SelectorNegocios extends StatelessWidget {
   }
 }
 
-// ─── PANTALLA PRINCIPAL ADMIN ──────────────────────────────────────────────
+// ─── PANTALLA PRINCIPAL ────────────────────────────────────────────────────
 
 class InicioSuperAdmin extends StatefulWidget {
   const InicioSuperAdmin({super.key});
@@ -513,11 +531,9 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: const Text("Panel Administrador"),
+          backgroundColor: Colors.transparent, elevation: 0,
+          title: const Text('Panel Super Administrador', style: TextStyle(color: Colors.white)),
           actions: [
             IconButton(
               icon: const Icon(Icons.logout),
@@ -554,6 +570,25 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
             ),
           ],
         ),
+        body: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(children: [
+              _buildTab(0, Icons.business, 'Negocio'),
+              _buildTab(1, Icons.engineering, 'Trabajadores'),
+              _buildTab(2, Icons.people, 'Usuarios'),
+              _buildTab(3, Icons.calendar_today, 'Reservas'),
+            ]),
+          ),
+          Expanded(
+            child: IndexedStack(index: _tabIndex, children: const [
+              _NegocioTab(),
+              _TrabajadoresTab(),
+              _UsuariosTab(),
+              _PlaceholderTab(label: 'Reservas'),
+            ]),
+          ),
+        ]),
       ),
     );
   }
@@ -598,6 +633,11 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
                 ),
               ],
             ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, color: selected ? Colors.white : Colors.white60, size: 20),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white60, fontSize: 10, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+            ]),
           ),
         ),
       ),
@@ -605,7 +645,7 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
   }
 }
 
-// ─── DIÁLOGO AÑADIR SERVICIO ───────────────────────────────────────────────
+// ─── MODAL HELPERS ─────────────────────────────────────────────────────────
 
 Future<void> _mostrarDialogoNuevoServicio(
   BuildContext context,
@@ -619,20 +659,92 @@ Future<void> _mostrarDialogoNuevoServicio(
   bool activo = true;
   final color = negocio.color;
 
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setModalState) => Container(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1E293B), Color(0xFF334155)],
+Widget _modalHandle() => Center(child: Container(width: 40, height: 4,
+    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))));
+
+Widget _modalTitulo(IconData icon, Color color, String titulo) =>
+    Row(children: [
+      Icon(icon, color: color, size: 22), const SizedBox(width: 10),
+      Expanded(child: Text(titulo, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+    ]);
+
+Widget _switchModal(String label, bool value, Color color, ValueChanged<bool> onChanged) =>
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
+      child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
+          title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+          value: value, activeColor: color, onChanged: onChanged),
+    );
+
+Widget _botonesModal(Color color, {required VoidCallback onCancelar, required VoidCallback onConfirmar, required String labelConfirmar}) =>
+    Row(children: [
+      Expanded(child: OutlinedButton(onPressed: onCancelar,
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          child: const Text('Cancelar'))),
+      const SizedBox(width: 12),
+      Expanded(flex: 2, child: ElevatedButton(onPressed: onConfirmar,
+          style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
+          child: Text(labelConfirmar, style: const TextStyle(fontWeight: FontWeight.w600)))),
+    ]);
+
+Widget _fieldModal(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
+      const SizedBox(height: 4),
+      TextFormField(controller: ctrl, maxLines: maxLines,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: _inputDeco(icon, accent)),
+    ]);
+
+// ─── WIDGET SELECTOR NEGOCIOS+SERVICIOS (reutilizable en modales) ──────────
+
+Widget _negociosServiciosSelector({
+  required Map<String, List<String>> negociosYServicios,
+  Map<String, bool>? esAdminEn,
+  required StateSetter set,
+  bool showAdmin = false,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: negocios.map((n) {
+      final asignado = negociosYServicios.containsKey(n.nombre);
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        GestureDetector(
+          onTap: () => set(() {
+            if (asignado) {
+              negociosYServicios.remove(n.nombre);
+              esAdminEn?.remove(n.nombre);
+            } else {
+              negociosYServicios[n.nombre] = [];
+              if (showAdmin) esAdminEn?[n.nombre] = false;
+            }
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: asignado ? n.color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: asignado ? n.color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
+            ),
+            child: Row(children: [
+              Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? n.color : Colors.white38, size: 18),
+              const SizedBox(width: 8),
+              Icon(n.icono, color: asignado ? n.color : Colors.white38, size: 16),
+              const SizedBox(width: 6),
+              Text(n.nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13, fontWeight: FontWeight.w500)),
+              if (showAdmin && asignado && esAdminEn != null) ...[
+                const Spacer(),
+                Icon(Icons.shield, color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white24, size: 14),
+                const SizedBox(width: 4),
+                Text((esAdminEn[n.nombre] ?? false) ? 'Admin' : 'Staff',
+                    style: TextStyle(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white38, fontSize: 11)),
+              ],
+            ]),
           ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -792,6 +904,7 @@ Future<void> _mostrarDialogoNuevoServicio(
       ),
     ),
   );
+}
 
   nombreCtrl.dispose();
   precioCtrl.dispose();
@@ -799,7 +912,7 @@ Future<void> _mostrarDialogoNuevoServicio(
   descCtrl.dispose();
 }
 
-// ─── DIÁLOGO AÑADIR TRABAJADOR ─────────────────────────────────────────────
+// ─── MODAL NUEVO TRABAJADOR ────────────────────────────────────────────────
 
 Future<void> _mostrarDialogoNuevoTrabajador(
   BuildContext context,
@@ -1013,7 +1126,7 @@ Future<void> _mostrarDialogoNuevoTrabajador(
           ),
         ),
       ),
-    ),
+    )),
   );
 
   nombreCtrl.dispose();
@@ -1021,7 +1134,7 @@ Future<void> _mostrarDialogoNuevoTrabajador(
   telCtrl.dispose();
 }
 
-// ─── DIÁLOGO AÑADIR USUARIO ────────────────────────────────────────────────
+// ─── MODAL GESTIONAR ROLES ─────────────────────────────────────────────────
 
 Future<void> _mostrarDialogoNuevoUsuario(
   BuildContext context,
@@ -1169,8 +1282,11 @@ Future<void> _mostrarDialogoNuevoUsuario(
           ),
         ),
       ),
-    ),
+    )),
   );
+}
+
+// ─── MODAL NUEVO USUARIO GLOBAL ────────────────────────────────────────────
 
   nombreCtrl.dispose();
   emailCtrl.dispose();
@@ -1255,6 +1371,21 @@ class _NegocioTab extends StatefulWidget {
 class _NegocioTabState extends State<_NegocioTab> {
   int _negocioSeleccionado = 0;
 
+  void _confirmarEliminarServicio(Servicio s, Negocio negocio) {
+    showDialog(
+      context: context,
+      builder: (_) => _dialogConfirm(
+        context: context,
+        titulo: 'Eliminar servicio',
+        mensaje: '¿Eliminar "${s.nombre}" de ${negocio.nombre}? Esta acción no se puede deshacer.',
+        onConfirm: () {
+          setState(() => negocio.servicios.remove(s));
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final negocio = negocios[_negocioSeleccionado];
@@ -1285,23 +1416,25 @@ class _NegocioTabState extends State<_NegocioTab> {
             ),
           ),
         ),
-      ],
-    );
+      ),
+    ]);
   }
 }
 
-// ─── TARJETA EXPANSIBLE SERVICIO ───────────────────────────────────────────
+// ─── SERVICIO EXPANSION ────────────────────────────────────────────────────
 
 class _ServicioExpansion extends StatefulWidget {
   final Servicio servicio;
   final Negocio negocio;
   final VoidCallback onGuardado;
+  final VoidCallback onEliminar;
 
   const _ServicioExpansion({
     required Key key,
     required this.servicio,
     required this.negocio,
     required this.onGuardado,
+    required this.onEliminar,
   }) : super(key: key);
 
   @override
@@ -1638,21 +1771,13 @@ class _TrabajadoresTabState extends State<_TrabajadoresTab> {
   }
 }
 
-// ─── TARJETA EXPANSIBLE TRABAJADOR ────────────────────────────────────────
-
 class _TrabajadorExpansion extends StatefulWidget {
   final Trabajador trabajador;
   final Negocio negocio;
   final VoidCallback onEliminado;
   final VoidCallback onActualizado;
 
-  const _TrabajadorExpansion({
-    required Key key,
-    required this.trabajador,
-    required this.negocio,
-    required this.onEliminado,
-    required this.onActualizado,
-  }) : super(key: key);
+  const _TrabajadorExpansion({required Key key, required this.trabajador, required this.negocio, required this.onEliminado, required this.onActualizado}) : super(key: key);
 
   @override
   State<_TrabajadorExpansion> createState() => _TrabajadorExpansionState();
@@ -1729,6 +1854,8 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
   Widget build(BuildContext context) {
     final t = widget.trabajador;
     final color = widget.negocio.color;
+    final esAdmin = t.isAdminEn(widget.negocio.nombre);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AnimatedContainer(
@@ -1969,6 +2096,17 @@ class _UsuariosTab extends StatefulWidget {
 
 class _UsuariosTabState extends State<_UsuariosTab> {
   int _negocioSeleccionado = 0;
+  final TextEditingController _busquedaCtrl = TextEditingController();
+  String _textoBusqueda = '';
+  // Negocios seleccionados como filtro (vacío = sin filtro)
+  Set<String> _filtroNegocios = {};
+  bool _mostrarFiltros = false;
+
+  @override
+  void dispose() { _busquedaCtrl.dispose(); super.dispose(); }
+
+  List<Usuario> get _usuariosFiltrados {
+    List<Usuario> lista = usuarios;
 
   List<Usuario> get _filtrados => usuarios
       .where((u) => u.negocioNombre == negocios[_negocioSeleccionado].nombre)
@@ -2035,7 +2173,7 @@ class _UsuariosTabState extends State<_UsuariosTab> {
   }
 }
 
-// ─── TARJETA EXPANSIBLE USUARIO ────────────────────────────────────────────
+// ─── USUARIO EXPANSION ────────────────────────────────────────────────────
 
 class _UsuarioExpansion extends StatefulWidget {
   final Usuario usuario;
@@ -2043,13 +2181,7 @@ class _UsuarioExpansion extends StatefulWidget {
   final VoidCallback onEliminado;
   final VoidCallback onActualizado;
 
-  const _UsuarioExpansion({
-    required Key key,
-    required this.usuario,
-    required this.negocio,
-    required this.onEliminado,
-    required this.onActualizado,
-  }) : super(key: key);
+  const _UsuarioExpansion({required Key key, required this.usuario, required this.negocio, required this.onEliminado, required this.onActualizado}) : super(key: key);
 
   @override
   State<_UsuarioExpansion> createState() => _UsuarioExpansionState();
@@ -2123,6 +2255,8 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
   Widget build(BuildContext context) {
     final u = widget.usuario;
     final color = widget.negocio.color;
+    final serviciosEnNegocio = u.negociosYServicios[widget.negocio.nombre] ?? [];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AnimatedContainer(
@@ -2211,7 +2345,7 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
     );
   }
 
-  Widget _form(Color color) => Padding(
+  Widget _formUsuario(Color color) => Padding(
     padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
