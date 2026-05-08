@@ -33,15 +33,12 @@ class Negocio {
   });
 }
 
-// Trabajador ahora puede pertenecer a VARIOS negocios
 class Trabajador {
   String nombre;
   String email;
   String telefono;
   bool activo;
-  // negocioNombre → lista de servicios asignados en ese negocio
   Map<String, List<String>> negociosYServicios;
-  // negocioNombre → true si es admin en ese negocio
   Map<String, bool> esAdminEn;
 
   Trabajador({
@@ -54,20 +51,15 @@ class Trabajador {
   });
 
   List<String> get negociosAsignados => negociosYServicios.keys.toList();
-
-  List<String> serviciosEnNegocio(String negocio) =>
-      negociosYServicios[negocio] ?? [];
-
+  List<String> serviciosEnNegocio(String negocio) => negociosYServicios[negocio] ?? [];
   bool isAdminEn(String negocio) => esAdminEn[negocio] ?? false;
 }
 
-// Usuario puede pertenecer a VARIOS negocios con servicios por negocio
 class Usuario {
   String nombre;
   String email;
   String telefono;
   bool activo;
-  // negocioNombre → lista de servicios contratados en ese negocio
   Map<String, List<String>> negociosYServicios;
 
   Usuario({
@@ -119,61 +111,29 @@ final List<Negocio> negocios = [
 ];
 
 List<Trabajador> trabajadores = [
-  Trabajador(nombre: 'Carlos Ruiz', email: 'carlos@academia.com', telefono: '612 345 678', activo: true,
-    negociosYServicios: {'Academia': ['Inglés', 'Repaso']},
-    esAdminEn: {'Academia': true}),
-  Trabajador(nombre: 'Lucía Fernández', email: 'lucia@academia.com', telefono: '623 456 789', activo: true,
-    negociosYServicios: {'Academia': ['Matemáticas'], 'Yoga': ['Yoga Suave', 'Meditación']},
-    esAdminEn: {'Academia': false, 'Yoga': false}),
-  Trabajador(nombre: 'Marta González', email: 'marta@fisio.com', telefono: '634 567 890', activo: true,
-    negociosYServicios: {'Fisioterapeuta': ['Especialista 1', 'Especialista 3']},
-    esAdminEn: {'Fisioterapeuta': true}),
-  Trabajador(nombre: 'Javier Moreno', email: 'javier@fisio.com', telefono: '645 678 901', activo: false,
-    negociosYServicios: {'Fisioterapeuta': ['Especialista 4']},
-    esAdminEn: {'Fisioterapeuta': false}),
-  Trabajador(nombre: 'Ana Torres', email: 'ana@fisio.com', telefono: '656 789 012', activo: true,
-    negociosYServicios: {'Fisioterapeuta': ['Especialista 2', 'Especialista 5']},
-    esAdminEn: {'Fisioterapeuta': false}),
-  Trabajador(nombre: 'Pedro Sánchez', email: 'pedro@gimnasio.com', telefono: '667 890 123', activo: true,
-    negociosYServicios: {'Gimnasio': ['Sala Fitness', 'CrossTraining']},
-    esAdminEn: {'Gimnasio': true}),
-  Trabajador(nombre: 'Elena Díaz', email: 'elena@gimnasio.com', telefono: '678 901 234', activo: true,
-    negociosYServicios: {'Gimnasio': ['Spinning', 'Zumba']},
-    esAdminEn: {'Gimnasio': false}),
-  Trabajador(nombre: 'Roberto Jiménez', email: 'roberto@gimnasio.com', telefono: '689 012 345', activo: false,
-    negociosYServicios: {'Gimnasio': ['Boxeo']},
-    esAdminEn: {'Gimnasio': false}),
-  Trabajador(nombre: 'Isabel López', email: 'isabel@peluqueria.com', telefono: '690 123 456', activo: true,
-    negociosYServicios: {'Peluquería': ['Corte Dama', 'Coloración', 'Tratamiento Capilar']},
-    esAdminEn: {'Peluquería': true}),
-  Trabajador(nombre: 'Miguel Romero', email: 'miguel@peluqueria.com', telefono: '601 234 567', activo: true,
-    negociosYServicios: {'Peluquería': ['Corte Caballeros', 'Barbería']},
-    esAdminEn: {'Peluquería': false}),
-  Trabajador(nombre: 'Sofía Martín', email: 'sofia@yoga.com', telefono: '612 345 670', activo: true,
-    negociosYServicios: {'Yoga': ['Yoga Suave', 'Meditación']},
-    esAdminEn: {'Yoga': true}),
-  Trabajador(nombre: 'Daniel Herrera', email: 'daniel@yoga.com', telefono: '623 456 781', activo: true,
-    negociosYServicios: {'Yoga': ['Vinyasa', 'Power Yoga']},
-    esAdminEn: {'Yoga': false}),
+  Trabajador(nombre: 'Carlos Ruiz', email: 'carlos@academia.com', telefono: '612 345 678', activo: true, negociosYServicios: {'Academia': ['Inglés', 'Repaso']}, esAdminEn: {'Academia': true}),
+  Trabajador(nombre: 'Lucía Fernández', email: 'lucia@academia.com', telefono: '623 456 789', activo: true, negociosYServicios: {'Academia': ['Matemáticas'], 'Yoga': ['Yoga Suave', 'Meditación']}, esAdminEn: {'Academia': false, 'Yoga': false}),
+  Trabajador(nombre: 'Marta González', email: 'marta@fisio.com', telefono: '634 567 890', activo: true, negociosYServicios: {'Fisioterapeuta': ['Especialista 1', 'Especialista 3']}, esAdminEn: {'Fisioterapeuta': true}),
+  Trabajador(nombre: 'Javier Moreno', email: 'javier@fisio.com', telefono: '645 678 901', activo: false, negociosYServicios: {'Fisioterapeuta': ['Especialista 4']}, esAdminEn: {'Fisioterapeuta': false}),
+  Trabajador(nombre: 'Ana Torres', email: 'ana@fisio.com', telefono: '656 789 012', activo: true, negociosYServicios: {'Fisioterapeuta': ['Especialista 2', 'Especialista 5']}, esAdminEn: {'Fisioterapeuta': false}),
+  Trabajador(nombre: 'Pedro Sánchez', email: 'pedro@gimnasio.com', telefono: '667 890 123', activo: true, negociosYServicios: {'Gimnasio': ['Sala Fitness', 'CrossTraining']}, esAdminEn: {'Gimnasio': true}),
+  Trabajador(nombre: 'Elena Díaz', email: 'elena@gimnasio.com', telefono: '678 901 234', activo: true, negociosYServicios: {'Gimnasio': ['Spinning', 'Zumba']}, esAdminEn: {'Gimnasio': false}),
+  Trabajador(nombre: 'Roberto Jiménez', email: 'roberto@gimnasio.com', telefono: '689 012 345', activo: false, negociosYServicios: {'Gimnasio': ['Boxeo']}, esAdminEn: {'Gimnasio': false}),
+  Trabajador(nombre: 'Isabel López', email: 'isabel@peluqueria.com', telefono: '690 123 456', activo: true, negociosYServicios: {'Peluquería': ['Corte Dama', 'Coloración', 'Tratamiento Capilar']}, esAdminEn: {'Peluquería': true}),
+  Trabajador(nombre: 'Miguel Romero', email: 'miguel@peluqueria.com', telefono: '601 234 567', activo: true, negociosYServicios: {'Peluquería': ['Corte Caballeros', 'Barbería']}, esAdminEn: {'Peluquería': false}),
+  Trabajador(nombre: 'Sofía Martín', email: 'sofia@yoga.com', telefono: '612 345 670', activo: true, negociosYServicios: {'Yoga': ['Yoga Suave', 'Meditación']}, esAdminEn: {'Yoga': true}),
+  Trabajador(nombre: 'Daniel Herrera', email: 'daniel@yoga.com', telefono: '623 456 781', activo: true, negociosYServicios: {'Yoga': ['Vinyasa', 'Power Yoga']}, esAdminEn: {'Yoga': false}),
 ];
 
 List<Usuario> usuarios = [
-  Usuario(nombre: 'Laura Pérez', email: 'laura@gmail.com', telefono: '611 111 111', activo: true,
-    negociosYServicios: {'Academia': ['Inglés']}),
-  Usuario(nombre: 'Pablo García', email: 'pablo@gmail.com', telefono: '622 222 222', activo: true,
-    negociosYServicios: {'Gimnasio': ['Sala Fitness', 'Spinning']}),
-  Usuario(nombre: 'Carmen Ruiz', email: 'carmen@gmail.com', telefono: '633 333 333', activo: true,
-    negociosYServicios: {'Yoga': ['Vinyasa'], 'Academia': ['Repaso']}),
-  Usuario(nombre: 'Andrés López', email: 'andres@gmail.com', telefono: '644 444 444', activo: false,
-    negociosYServicios: {'Fisioterapeuta': ['Especialista 2']}),
-  Usuario(nombre: 'María Sánchez', email: 'maria@gmail.com', telefono: '655 555 555', activo: true,
-    negociosYServicios: {'Peluquería': ['Corte Dama']}),
-  Usuario(nombre: 'Francisco Torres', email: 'fran@gmail.com', telefono: '666 666 666', activo: true,
-    negociosYServicios: {'Gimnasio': ['CrossTraining', 'Zumba']}),
-  Usuario(nombre: 'Beatriz Moreno', email: 'bea@gmail.com', telefono: '677 777 777', activo: false,
-    negociosYServicios: {'Academia': ['Matemáticas']}),
-  Usuario(nombre: 'Sergio Díaz', email: 'sergio@gmail.com', telefono: '688 888 888', activo: true,
-    negociosYServicios: {'Yoga': ['Power Yoga']}),
+  Usuario(nombre: 'Laura Pérez', email: 'laura@gmail.com', telefono: '611 111 111', activo: true, negociosYServicios: {'Academia': ['Inglés']}),
+  Usuario(nombre: 'Pablo García', email: 'pablo@gmail.com', telefono: '622 222 222', activo: true, negociosYServicios: {'Gimnasio': ['Sala Fitness', 'Spinning']}),
+  Usuario(nombre: 'Carmen Ruiz', email: 'carmen@gmail.com', telefono: '633 333 333', activo: true, negociosYServicios: {'Yoga': ['Vinyasa'], 'Academia': ['Repaso']}),
+  Usuario(nombre: 'Andrés López', email: 'andres@gmail.com', telefono: '644 444 444', activo: false, negociosYServicios: {'Fisioterapeuta': ['Especialista 2']}),
+  Usuario(nombre: 'María Sánchez', email: 'maria@gmail.com', telefono: '655 555 555', activo: true, negociosYServicios: {'Peluquería': ['Corte Dama']}),
+  Usuario(nombre: 'Francisco Torres', email: 'fran@gmail.com', telefono: '666 666 666', activo: true, negociosYServicios: {'Gimnasio': ['CrossTraining', 'Zumba']}),
+  Usuario(nombre: 'Beatriz Moreno', email: 'bea@gmail.com', telefono: '677 777 777', activo: false, negociosYServicios: {'Academia': ['Matemáticas']}),
+  Usuario(nombre: 'Sergio Díaz', email: 'sergio@gmail.com', telefono: '688 888 888', activo: true, negociosYServicios: {'Yoga': ['Power Yoga']}),
 ];
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
@@ -214,7 +174,7 @@ class _SelectorNegocios extends StatelessWidget {
                     Icon(n.icono, color: selected ? n.color : Colors.white54, size: 20),
                     const SizedBox(height: 4),
                     Text(n.nombre, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: selected ? Colors.white : Colors.white60, fontSize: 9, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+                        style: TextStyle(color: selected ? Colors.white : Colors.white60, fontSize: 9, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
                   ]),
                 ),
               ),
@@ -242,7 +202,7 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)]),
+            colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)]),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -251,7 +211,7 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
           title: const Text('Panel Administrador', style: TextStyle(color: Colors.white)),
           actions: [
             IconButton(icon: const Icon(Icons.logout, color: Colors.white),
-              onPressed: () async => await FirebaseAuth.instance.signOut()),
+                onPressed: () async => await FirebaseAuth.instance.signOut()),
           ],
         ),
         body: Column(children: [
@@ -304,7 +264,167 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
   }
 }
 
-// ─── MODALES NEGOCIO ───────────────────────────────────────────────────────
+// ─── MODAL HELPERS ─────────────────────────────────────────────────────────
+
+Widget _modalContainer(BuildContext ctx, EdgeInsets padding, {required Widget child}) =>
+    Container(
+      padding: padding,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E293B), Color(0xFF334155)]),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: child,
+    );
+
+Widget _modalHandle() => Center(child: Container(width: 40, height: 4,
+    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))));
+
+Widget _modalTitulo(IconData icon, Color color, String titulo) =>
+    Row(children: [
+      Icon(icon, color: color, size: 22), const SizedBox(width: 10),
+      Expanded(child: Text(titulo, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+    ]);
+
+Widget _switchModal(String label, bool value, Color color, ValueChanged<bool> onChanged) =>
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
+      child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
+          title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+          value: value, activeColor: color, onChanged: onChanged),
+    );
+
+Widget _botonesModal(Color color, {required VoidCallback onCancelar, required VoidCallback onConfirmar, required String labelConfirmar}) =>
+    Row(children: [
+      Expanded(child: OutlinedButton(onPressed: onCancelar,
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          child: const Text('Cancelar'))),
+      const SizedBox(width: 12),
+      Expanded(flex: 2, child: ElevatedButton(onPressed: onConfirmar,
+          style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
+          child: Text(labelConfirmar, style: const TextStyle(fontWeight: FontWeight.w600)))),
+    ]);
+
+Widget _fieldModal(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
+      const SizedBox(height: 4),
+      TextFormField(controller: ctrl, maxLines: maxLines,
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: _inputDeco(icon, accent)),
+    ]);
+
+// ─── WIDGET SELECTOR NEGOCIOS+SERVICIOS (reutilizable en modales) ──────────
+
+Widget _negociosServiciosSelector({
+  required Map<String, List<String>> negociosYServicios,
+  Map<String, bool>? esAdminEn,
+  required StateSetter set,
+  bool showAdmin = false,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: negocios.map((n) {
+      final asignado = negociosYServicios.containsKey(n.nombre);
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        GestureDetector(
+          onTap: () => set(() {
+            if (asignado) {
+              negociosYServicios.remove(n.nombre);
+              esAdminEn?.remove(n.nombre);
+            } else {
+              negociosYServicios[n.nombre] = [];
+              if (showAdmin) esAdminEn?[n.nombre] = false;
+            }
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: asignado ? n.color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: asignado ? n.color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
+            ),
+            child: Row(children: [
+              Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? n.color : Colors.white38, size: 18),
+              const SizedBox(width: 8),
+              Icon(n.icono, color: asignado ? n.color : Colors.white38, size: 16),
+              const SizedBox(width: 6),
+              Text(n.nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13, fontWeight: FontWeight.w500)),
+              if (showAdmin && asignado && esAdminEn != null) ...[
+                const Spacer(),
+                Icon(Icons.shield, color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white24, size: 14),
+                const SizedBox(width: 4),
+                Text((esAdminEn[n.nombre] ?? false) ? 'Admin' : 'Staff',
+                    style: TextStyle(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white38, fontSize: 11)),
+              ],
+            ]),
+          ),
+        ),
+        if (asignado) ...[
+          Padding(padding: const EdgeInsets.only(left: 12, bottom: 4),
+              child: Text('Servicios en ${n.nombre}:', style: TextStyle(color: n.color, fontSize: 11, fontWeight: FontWeight.w500))),
+          ...n.servicios.map((s) {
+            final selSrv = negociosYServicios[n.nombre]!.contains(s.nombre);
+            return Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 4),
+              child: GestureDetector(
+                onTap: () => set(() {
+                  if (selSrv) negociosYServicios[n.nombre]!.remove(s.nombre);
+                  else negociosYServicios[n.nombre]!.add(s.nombre);
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selSrv ? n.color.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: selSrv ? n.color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(children: [
+                    Icon(selSrv ? Icons.check_box : Icons.check_box_outline_blank, color: selSrv ? n.color : Colors.white30, size: 16),
+                    const SizedBox(width: 8),
+                    Text(s.nombre, style: TextStyle(color: selSrv ? Colors.white : Colors.white54, fontSize: 12)),
+                  ]),
+                ),
+              ),
+            );
+          }),
+          if (showAdmin && esAdminEn != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 12),
+              child: GestureDetector(
+                onTap: () => set(() => esAdminEn[n.nombre] = !(esAdminEn[n.nombre] ?? false)),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: (esAdminEn[n.nombre] ?? false) ? Colors.amber.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.shield, color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white30, size: 16),
+                    const SizedBox(width: 8),
+                    Text('Admin de ${n.nombre}', style: TextStyle(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    AnimatedSwitcher(duration: const Duration(milliseconds: 150),
+                        child: (esAdminEn[n.nombre] ?? false)
+                            ? const Icon(Icons.toggle_on, color: Colors.amber, size: 26, key: ValueKey(true))
+                            : const Icon(Icons.toggle_off, color: Colors.white30, size: 26, key: ValueKey(false))),
+                  ]),
+                ),
+              ),
+            ),
+        ],
+      ]);
+    }).toList(),
+  );
+}
+
+// ─── MODAL NUEVO SERVICIO ──────────────────────────────────────────────────
 
 Future<void> _mostrarDialogoNuevoServicio(BuildContext context, Negocio negocio, VoidCallback onCreado) async {
   final nombreCtrl = TextEditingController();
@@ -320,8 +440,7 @@ Future<void> _mostrarDialogoNuevoServicio(BuildContext context, Negocio negocio,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _modalHandle(),
-          const SizedBox(height: 16),
+          _modalHandle(), const SizedBox(height: 16),
           _modalTitulo(negocio.icono, negocio.color, 'Nuevo servicio · ${negocio.nombre}'),
           const SizedBox(height: 20),
           _fieldModal('Nombre del servicio', nombreCtrl, Icons.label, negocio.color),
@@ -354,148 +473,60 @@ Future<void> _mostrarDialogoNuevoServicio(BuildContext context, Negocio negocio,
   nombreCtrl.dispose(); precioCtrl.dispose(); duracionCtrl.dispose(); descCtrl.dispose();
 }
 
-// ─── MODALES TRABAJADORES ──────────────────────────────────────────────────
+// ─── MODAL NUEVO TRABAJADOR ────────────────────────────────────────────────
 
 Future<void> _mostrarDialogoNuevoTrabajador(BuildContext context, Negocio negocioInicial, VoidCallback onCreado) async {
   final nombreCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final telCtrl = TextEditingController();
   bool activo = true;
-  // negocioNombre → servicios seleccionados
   Map<String, List<String>> negociosYServicios = {negocioInicial.nombre: []};
   Map<String, bool> esAdminEn = {negocioInicial.nombre: false};
 
   await showModalBottomSheet(
     context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-    builder: (ctx) => StatefulBuilder(builder: (ctx, set) {
-      return _modalContainer(ctx, EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _modalHandle(),
-            const SizedBox(height: 16),
-            _modalTitulo(Icons.engineering, const Color(0xFF64B5F6), 'Nuevo trabajador'),
-            const SizedBox(height: 20),
-            _fieldModal('Nombre completo', nombreCtrl, Icons.person, const Color(0xFF64B5F6)),
-            const SizedBox(height: 12),
-            _fieldModal('Email', emailCtrl, Icons.email, const Color(0xFF64B5F6)),
-            const SizedBox(height: 12),
-            _fieldModal('Teléfono', telCtrl, Icons.phone, const Color(0xFF64B5F6)),
-            const SizedBox(height: 12),
-            _switchModal('Activo desde el inicio', activo, const Color(0xFF64B5F6), (v) => set(() => activo = v)),
-            const SizedBox(height: 16),
-
-            // Negocios asignados
-            Text('Negocios asignados', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            ...negocios.map((n) {
-              final asignado = negociosYServicios.containsKey(n.nombre);
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                GestureDetector(
-                  onTap: () => set(() {
-                    if (asignado) { negociosYServicios.remove(n.nombre); esAdminEn.remove(n.nombre); }
-                    else { negociosYServicios[n.nombre] = []; esAdminEn[n.nombre] = false; }
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: asignado ? n.color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: asignado ? n.color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
-                    ),
-                    child: Row(children: [
-                      Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? n.color : Colors.white38, size: 18),
-                      const SizedBox(width: 10),
-                      Icon(n.icono, color: asignado ? n.color : Colors.white38, size: 16),
-                      const SizedBox(width: 6),
-                      Text(n.nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13)),
-                    ]),
-                  ),
-                ),
-                if (asignado) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12, bottom: 4),
-                    child: Text('Servicios en ${n.nombre}:', style: TextStyle(color: n.color, fontSize: 11)),
-                  ),
-                  ...n.servicios.map((s) {
-                    final selSrv = negociosYServicios[n.nombre]!.contains(s.nombre);
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 12, bottom: 4),
-                      child: GestureDetector(
-                        onTap: () => set(() {
-                          if (selSrv) negociosYServicios[n.nombre]!.remove(s.nombre);
-                          else negociosYServicios[n.nombre]!.add(s.nombre);
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: selSrv ? n.color.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
-                            borderRadius: BorderRadius.circular(7),
-                            border: Border.all(color: selSrv ? n.color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1)),
-                          ),
-                          child: Row(children: [
-                            Icon(selSrv ? Icons.check_box : Icons.check_box_outline_blank, color: selSrv ? n.color : Colors.white30, size: 16),
-                            const SizedBox(width: 8),
-                            Text(s.nombre, style: TextStyle(color: selSrv ? Colors.white : Colors.white54, fontSize: 12)),
-                          ]),
-                        ),
-                      ),
-                    );
-                  }),
-                  // Admin toggle por negocio
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12, bottom: 10),
-                    child: GestureDetector(
-                      onTap: () => set(() => esAdminEn[n.nombre] = !(esAdminEn[n.nombre] ?? false)),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: (esAdminEn[n.nombre] ?? false) ? Colors.amber.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.03),
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(children: [
-                          Icon(Icons.shield, color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white30, size: 16),
-                          const SizedBox(width: 8),
-                          Text('Admin de ${n.nombre}', style: TextStyle(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ],
-              ]);
-            }),
-
-            const SizedBox(height: 20),
-            _botonesModal(const Color(0xFF64B5F6), onCancelar: () => Navigator.pop(ctx), onConfirmar: () {
-              if (nombreCtrl.text.trim().isEmpty) return;
-              trabajadores.add(Trabajador(
-                nombre: nombreCtrl.text.trim(),
-                email: emailCtrl.text.trim(),
-                telefono: telCtrl.text.trim(),
-                activo: activo,
-                negociosYServicios: Map.from(negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v)))),
-                esAdminEn: Map.from(esAdminEn),
-              ));
-              Navigator.pop(ctx); onCreado();
-            }, labelConfirmar: 'Añadir trabajador'),
-          ]),
-        ),
-      );
-    }),
+    builder: (ctx) => StatefulBuilder(builder: (ctx, set) => _modalContainer(
+      ctx, EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _modalHandle(), const SizedBox(height: 16),
+          _modalTitulo(Icons.engineering, const Color(0xFF64B5F6), 'Nuevo trabajador'),
+          const SizedBox(height: 20),
+          _fieldModal('Nombre completo', nombreCtrl, Icons.person, const Color(0xFF64B5F6)),
+          const SizedBox(height: 12),
+          _fieldModal('Email', emailCtrl, Icons.email, const Color(0xFF64B5F6)),
+          const SizedBox(height: 12),
+          _fieldModal('Teléfono', telCtrl, Icons.phone, const Color(0xFF64B5F6)),
+          const SizedBox(height: 12),
+          _switchModal('Activo desde el inicio', activo, const Color(0xFF64B5F6), (v) => set(() => activo = v)),
+          const SizedBox(height: 16),
+          Text('Negocios y servicios', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          _negociosServiciosSelector(negociosYServicios: negociosYServicios, esAdminEn: esAdminEn, set: set, showAdmin: true),
+          const SizedBox(height: 20),
+          _botonesModal(const Color(0xFF64B5F6), onCancelar: () => Navigator.pop(ctx), onConfirmar: () {
+            if (nombreCtrl.text.trim().isEmpty) return;
+            trabajadores.add(Trabajador(
+              nombre: nombreCtrl.text.trim(), email: emailCtrl.text.trim(),
+              telefono: telCtrl.text.trim(), activo: activo,
+              negociosYServicios: Map.from(negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v)))),
+              esAdminEn: Map.from(esAdminEn),
+            ));
+            Navigator.pop(ctx); onCreado();
+          }, labelConfirmar: 'Añadir trabajador'),
+        ]),
+      ),
+    )),
   );
   nombreCtrl.dispose(); emailCtrl.dispose(); telCtrl.dispose();
 }
 
-// ─── MODAL GESTIONAR ROLES TRABAJADOR ─────────────────────────────────────
+// ─── MODAL GESTIONAR ROLES ─────────────────────────────────────────────────
 
 Future<void> _mostrarGestionRoles(BuildContext context, Trabajador trabajador, VoidCallback onActualizado) async {
   Map<String, List<String>> negociosYServicios = Map.from(
-    trabajador.negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
+      trabajador.negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
   Map<String, bool> esAdminEn = Map.from(trabajador.esAdminEn);
 
   await showModalBottomSheet(
@@ -505,117 +536,21 @@ Future<void> _mostrarGestionRoles(BuildContext context, Trabajador trabajador, V
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _modalHandle(),
-          const SizedBox(height: 16),
+          _modalHandle(), const SizedBox(height: 16),
           Row(children: [
             CircleAvatar(radius: 18, backgroundColor: const Color(0xFF64B5F6).withValues(alpha: 0.3),
-              child: Text(trabajador.nombre[0].toUpperCase(), style: const TextStyle(color: Color(0xFF64B5F6), fontWeight: FontWeight.bold))),
+                child: Text(trabajador.nombre[0].toUpperCase(), style: const TextStyle(color: Color(0xFF64B5F6), fontWeight: FontWeight.bold))),
             const SizedBox(width: 10),
-            Expanded(child: Text('Gestionar roles · ${trabajador.nombre}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
+            Expanded(child: Text('Gestionar roles · ${trabajador.nombre}',
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
           ]),
           const SizedBox(height: 20),
           Text('Negocios y servicios asignados', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 10),
-
-          ...negocios.map((n) {
-            final asignado = negociosYServicios.containsKey(n.nombre);
-            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              GestureDetector(
-                onTap: () => set(() {
-                  if (asignado) { negociosYServicios.remove(n.nombre); esAdminEn.remove(n.nombre); }
-                  else { negociosYServicios[n.nombre] = []; esAdminEn[n.nombre] = false; }
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: asignado ? n.color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: asignado ? n.color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
-                  ),
-                  child: Row(children: [
-                    Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? n.color : Colors.white38, size: 18),
-                    const SizedBox(width: 8),
-                    Icon(n.icono, color: asignado ? n.color : Colors.white38, size: 16),
-                    const SizedBox(width: 6),
-                    Text(n.nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    if (asignado) ...[
-                      Icon(Icons.shield, color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white24, size: 14),
-                      const SizedBox(width: 4),
-                      Text((esAdminEn[n.nombre] ?? false) ? 'Admin' : 'Staff',
-                        style: TextStyle(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white38, fontSize: 11)),
-                    ],
-                  ]),
-                ),
-              ),
-              if (asignado) ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 4),
-                  child: Text('Servicios en ${n.nombre}:', style: TextStyle(color: n.color, fontSize: 11, fontWeight: FontWeight.w500)),
-                ),
-                ...n.servicios.map((s) {
-                  final selSrv = negociosYServicios[n.nombre]!.contains(s.nombre);
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 12, bottom: 4),
-                    child: GestureDetector(
-                      onTap: () => set(() {
-                        if (selSrv) negociosYServicios[n.nombre]!.remove(s.nombre);
-                        else negociosYServicios[n.nombre]!.add(s.nombre);
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selSrv ? n.color.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(color: selSrv ? n.color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(children: [
-                          Icon(selSrv ? Icons.check_box : Icons.check_box_outline_blank, color: selSrv ? n.color : Colors.white30, size: 16),
-                          const SizedBox(width: 8),
-                          Text(s.nombre, style: TextStyle(color: selSrv ? Colors.white : Colors.white54, fontSize: 12)),
-                        ]),
-                      ),
-                    ),
-                  );
-                }),
-                // Toggle admin por negocio
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 12),
-                  child: GestureDetector(
-                    onTap: () => set(() => esAdminEn[n.nombre] = !(esAdminEn[n.nombre] ?? false)),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: (esAdminEn[n.nombre] ?? false) ? Colors.amber.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(7),
-                        border: Border.all(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1)),
-                      ),
-                      child: Row(children: [
-                        Icon(Icons.shield, color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white30, size: 16),
-                        const SizedBox(width: 8),
-                        Text('Admin de ${n.nombre}',
-                          style: TextStyle(color: (esAdminEn[n.nombre] ?? false) ? Colors.amber : Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
-                        const Spacer(),
-                        AnimatedSwitcher(duration: const Duration(milliseconds: 150),
-                          child: (esAdminEn[n.nombre] ?? false)
-                            ? const Icon(Icons.toggle_on, color: Colors.amber, size: 26, key: ValueKey(true))
-                            : const Icon(Icons.toggle_off, color: Colors.white30, size: 26, key: ValueKey(false))),
-                      ]),
-                    ),
-                  ),
-                ),
-              ],
-            ]);
-          }),
-
+          _negociosServiciosSelector(negociosYServicios: negociosYServicios, esAdminEn: esAdminEn, set: set, showAdmin: true),
           const SizedBox(height: 20),
           _botonesModal(const Color(0xFF64B5F6), onCancelar: () => Navigator.pop(ctx), onConfirmar: () {
-            trabajador.negociosYServicios = Map.from(
-              negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
+            trabajador.negociosYServicios = Map.from(negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
             trabajador.esAdminEn = Map.from(esAdminEn);
             Navigator.pop(ctx); onActualizado();
           }, labelConfirmar: 'Guardar roles'),
@@ -641,8 +576,7 @@ Future<void> _mostrarDialogoNuevoUsuario(BuildContext context, VoidCallback onCr
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _modalHandle(),
-          const SizedBox(height: 16),
+          _modalHandle(), const SizedBox(height: 16),
           _modalTitulo(Icons.person_add, const Color(0xFF64B5F6), 'Nuevo usuario'),
           const SizedBox(height: 20),
           _fieldModal('Nombre completo', nombreCtrl, Icons.person, const Color(0xFF64B5F6)),
@@ -655,75 +589,13 @@ Future<void> _mostrarDialogoNuevoUsuario(BuildContext context, VoidCallback onCr
           const SizedBox(height: 16),
           Text('Asignar a negocios y servicios', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          ...negocios.map((n) {
-            final asignado = negociosYServicios.containsKey(n.nombre);
-            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              GestureDetector(
-                onTap: () => set(() {
-                  if (asignado) negociosYServicios.remove(n.nombre);
-                  else negociosYServicios[n.nombre] = [];
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: asignado ? n.color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: asignado ? n.color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
-                  ),
-                  child: Row(children: [
-                    Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? n.color : Colors.white38, size: 18),
-                    const SizedBox(width: 8),
-                    Icon(n.icono, color: asignado ? n.color : Colors.white38, size: 16),
-                    const SizedBox(width: 6),
-                    Text(n.nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13, fontWeight: FontWeight.w500)),
-                  ]),
-                ),
-              ),
-              if (asignado) ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 4),
-                  child: Text('Servicios contratados:', style: TextStyle(color: n.color, fontSize: 11)),
-                ),
-                ...n.servicios.map((s) {
-                  final selSrv = negociosYServicios[n.nombre]!.contains(s.nombre);
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 12, bottom: 4),
-                    child: GestureDetector(
-                      onTap: () => set(() {
-                        if (selSrv) negociosYServicios[n.nombre]!.remove(s.nombre);
-                        else negociosYServicios[n.nombre]!.add(s.nombre);
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selSrv ? n.color.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(color: selSrv ? n.color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(children: [
-                          Icon(selSrv ? Icons.check_box : Icons.check_box_outline_blank, color: selSrv ? n.color : Colors.white30, size: 16),
-                          const SizedBox(width: 8),
-                          Text(s.nombre, style: TextStyle(color: selSrv ? Colors.white : Colors.white54, fontSize: 12)),
-                        ]),
-                      ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 6),
-              ],
-            ]);
-          }),
+          _negociosServiciosSelector(negociosYServicios: negociosYServicios, set: set, showAdmin: false),
           const SizedBox(height: 20),
           _botonesModal(const Color(0xFF64B5F6), onCancelar: () => Navigator.pop(ctx), onConfirmar: () {
             if (nombreCtrl.text.trim().isEmpty) return;
             usuarios.add(Usuario(
-              nombre: nombreCtrl.text.trim(),
-              email: emailCtrl.text.trim(),
-              telefono: telCtrl.text.trim(),
-              activo: activo,
+              nombre: nombreCtrl.text.trim(), email: emailCtrl.text.trim(),
+              telefono: telCtrl.text.trim(), activo: activo,
               negociosYServicios: Map.from(negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v)))),
             ));
             Navigator.pop(ctx); onCreado();
@@ -739,7 +611,7 @@ Future<void> _mostrarDialogoNuevoUsuario(BuildContext context, VoidCallback onCr
 
 Future<void> _mostrarGestionUsuario(BuildContext context, Usuario usuario, VoidCallback onActualizado) async {
   Map<String, List<String>> negociosYServicios = Map.from(
-    usuario.negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
+      usuario.negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
 
   await showModalBottomSheet(
     context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
@@ -748,82 +620,21 @@ Future<void> _mostrarGestionUsuario(BuildContext context, Usuario usuario, VoidC
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _modalHandle(),
-          const SizedBox(height: 16),
+          _modalHandle(), const SizedBox(height: 16),
           Row(children: [
             CircleAvatar(radius: 18, backgroundColor: const Color(0xFF64B5F6).withValues(alpha: 0.3),
-              child: Text(usuario.nombre[0].toUpperCase(), style: const TextStyle(color: Color(0xFF64B5F6), fontWeight: FontWeight.bold))),
+                child: Text(usuario.nombre[0].toUpperCase(), style: const TextStyle(color: Color(0xFF64B5F6), fontWeight: FontWeight.bold))),
             const SizedBox(width: 10),
-            Expanded(child: Text('Servicios de ${usuario.nombre}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
+            Expanded(child: Text('Servicios de ${usuario.nombre}',
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600))),
           ]),
           const SizedBox(height: 20),
           Text('Negocios y servicios contratados', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
           const SizedBox(height: 10),
-          ...negocios.map((n) {
-            final asignado = negociosYServicios.containsKey(n.nombre);
-            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              GestureDetector(
-                onTap: () => set(() {
-                  if (asignado) negociosYServicios.remove(n.nombre);
-                  else negociosYServicios[n.nombre] = [];
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: asignado ? n.color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: asignado ? n.color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15)),
-                  ),
-                  child: Row(children: [
-                    Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? n.color : Colors.white38, size: 18),
-                    const SizedBox(width: 8),
-                    Icon(n.icono, color: asignado ? n.color : Colors.white38, size: 16),
-                    const SizedBox(width: 6),
-                    Text(n.nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13, fontWeight: FontWeight.w500)),
-                  ]),
-                ),
-              ),
-              if (asignado) ...[
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 4),
-                  child: Text('Servicios contratados:', style: TextStyle(color: n.color, fontSize: 11)),
-                ),
-                ...n.servicios.map((s) {
-                  final selSrv = negociosYServicios[n.nombre]!.contains(s.nombre);
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 12, bottom: 4),
-                    child: GestureDetector(
-                      onTap: () => set(() {
-                        if (selSrv) negociosYServicios[n.nombre]!.remove(s.nombre);
-                        else negociosYServicios[n.nombre]!.add(s.nombre);
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selSrv ? n.color.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(color: selSrv ? n.color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(children: [
-                          Icon(selSrv ? Icons.check_box : Icons.check_box_outline_blank, color: selSrv ? n.color : Colors.white30, size: 16),
-                          const SizedBox(width: 8),
-                          Text(s.nombre, style: TextStyle(color: selSrv ? Colors.white : Colors.white54, fontSize: 12)),
-                        ]),
-                      ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 6),
-              ],
-            ]);
-          }),
+          _negociosServiciosSelector(negociosYServicios: negociosYServicios, set: set, showAdmin: false),
           const SizedBox(height: 20),
           _botonesModal(const Color(0xFF64B5F6), onCancelar: () => Navigator.pop(ctx), onConfirmar: () {
-            usuario.negociosYServicios = Map.from(
-              negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
+            usuario.negociosYServicios = Map.from(negociosYServicios.map((k, v) => MapEntry(k, List<String>.from(v))));
             Navigator.pop(ctx); onActualizado();
           }, labelConfirmar: 'Guardar cambios'),
         ]),
@@ -832,74 +643,24 @@ Future<void> _mostrarGestionUsuario(BuildContext context, Usuario usuario, VoidC
   );
 }
 
-// ─── HELPERS MODALES ───────────────────────────────────────────────────────
-
-Widget _modalContainer(BuildContext ctx, EdgeInsets padding, {required Widget child}) =>
-  Container(
-    padding: padding,
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E293B), Color(0xFF334155)]),
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    child: child,
-  );
-
-Widget _modalHandle() => Center(child: Container(width: 40, height: 4,
-  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))));
-
-Widget _modalTitulo(IconData icon, Color color, String titulo) =>
-  Row(children: [
-    Icon(icon, color: color, size: 22),
-    const SizedBox(width: 10),
-    Expanded(child: Text(titulo, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
-  ]);
-
-Widget _switchModal(String label, bool value, Color color, ValueChanged<bool> onChanged) =>
-  Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
-    child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
-      title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
-      value: value, activeColor: color, onChanged: onChanged),
-  );
-
-Widget _botonesModal(Color color, {required VoidCallback onCancelar, required VoidCallback onConfirmar, required String labelConfirmar}) =>
-  Row(children: [
-    Expanded(child: OutlinedButton(onPressed: onCancelar,
-      style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-      child: const Text('Cancelar'))),
-    const SizedBox(width: 12),
-    Expanded(flex: 2, child: ElevatedButton(onPressed: onConfirmar,
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
-      child: Text(labelConfirmar, style: const TextStyle(fontWeight: FontWeight.w600)))),
-  ]);
-
-Widget _fieldModal(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
-  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
-    const SizedBox(height: 4),
-    TextFormField(controller: ctrl, maxLines: maxLines,
-      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      style: const TextStyle(color: Colors.white, fontSize: 13),
-      decoration: _inputDeco(icon, accent)),
-  ]);
+// ─── BOTÓN AÑADIR ──────────────────────────────────────────────────────────
 
 Widget _botonAnadir({required Color color, required String label, required VoidCallback onTap}) =>
-  Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.4))),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.add_circle_outline, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
-        ]),
+    Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.4))),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.add_circle_outline, color: color, size: 18),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
+          ]),
+        ),
       ),
-    ),
-  );
+    );
 
 // ─── TAB NEGOCIO ───────────────────────────────────────────────────────────
 
@@ -912,21 +673,41 @@ class _NegocioTab extends StatefulWidget {
 class _NegocioTabState extends State<_NegocioTab> {
   int _negocioSeleccionado = 0;
 
+  void _confirmarEliminarServicio(Servicio s, Negocio negocio) {
+    showDialog(
+      context: context,
+      builder: (_) => _dialogConfirm(
+        context: context,
+        titulo: 'Eliminar servicio',
+        mensaje: '¿Eliminar "${s.nombre}" de ${negocio.nombre}? Esta acción no se puede deshacer.',
+        onConfirm: () {
+          setState(() => negocio.servicios.remove(s));
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final negocio = negocios[_negocioSeleccionado];
     return Column(children: [
       _SelectorNegocios(seleccionado: _negocioSeleccionado, onSeleccionado: (i) => setState(() => _negocioSeleccionado = i)),
       _botonAnadir(color: negocio.color, label: 'Añadir servicio a ${negocio.nombre}',
-        onTap: () => _mostrarDialogoNuevoServicio(context, negocio, () => setState(() {}))),
+          onTap: () => _mostrarDialogoNuevoServicio(context, negocio, () => setState(() {}))),
       Expanded(
-        child: ListView.builder(
+        child: negocio.servicios.isEmpty
+            ? Center(child: Text('No hay servicios en ${negocio.nombre}', style: const TextStyle(color: Colors.white60)))
+            : ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           itemCount: negocio.servicios.length,
           itemBuilder: (context, i) => _ServicioExpansion(
             key: ValueKey(negocio.servicios[i]),
-            servicio: negocio.servicios[i], negocio: negocio,
-            onGuardado: () => setState(() {})),
+            servicio: negocio.servicios[i],
+            negocio: negocio,
+            onGuardado: () => setState(() {}),
+            onEliminar: () => _confirmarEliminarServicio(negocio.servicios[i], negocio),
+          ),
         ),
       ),
     ]);
@@ -936,8 +717,19 @@ class _NegocioTabState extends State<_NegocioTab> {
 // ─── SERVICIO EXPANSION ────────────────────────────────────────────────────
 
 class _ServicioExpansion extends StatefulWidget {
-  final Servicio servicio; final Negocio negocio; final VoidCallback onGuardado;
-  const _ServicioExpansion({required Key key, required this.servicio, required this.negocio, required this.onGuardado}) : super(key: key);
+  final Servicio servicio;
+  final Negocio negocio;
+  final VoidCallback onGuardado;
+  final VoidCallback onEliminar;
+
+  const _ServicioExpansion({
+    required Key key,
+    required this.servicio,
+    required this.negocio,
+    required this.onGuardado,
+    required this.onEliminar,
+  }) : super(key: key);
+
   @override
   State<_ServicioExpansion> createState() => _ServicioExpansionState();
 }
@@ -947,12 +739,16 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
   late TextEditingController _nombreCtrl, _precioCtrl, _duracionCtrl, _descCtrl;
   late bool _activo;
 
-  @override void initState() { super.initState(); _reset(); }
+  @override
+  void initState() { super.initState(); _reset(); }
 
   @override
   void didUpdateWidget(covariant _ServicioExpansion old) {
     super.didUpdateWidget(old);
-    if (old.servicio != widget.servicio) { _nombreCtrl.dispose(); _precioCtrl.dispose(); _duracionCtrl.dispose(); _descCtrl.dispose(); _reset(); }
+    if (old.servicio != widget.servicio) {
+      _nombreCtrl.dispose(); _precioCtrl.dispose(); _duracionCtrl.dispose(); _descCtrl.dispose();
+      _reset();
+    }
   }
 
   void _reset() {
@@ -965,73 +761,135 @@ class _ServicioExpansionState extends State<_ServicioExpansion> {
   }
 
   @override
-  void dispose() { _nombreCtrl.dispose(); _precioCtrl.dispose(); _duracionCtrl.dispose(); _descCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _nombreCtrl.dispose(); _precioCtrl.dispose(); _duracionCtrl.dispose(); _descCtrl.dispose();
+    super.dispose();
+  }
 
   void _guardar() {
     final s = widget.servicio;
-    s.nombre = _nombreCtrl.text; s.precio = double.tryParse(_precioCtrl.text) ?? s.precio;
+    s.nombre = _nombreCtrl.text;
+    s.precio = double.tryParse(_precioCtrl.text) ?? s.precio;
     s.duracionMinutos = int.tryParse(_duracionCtrl.text) ?? s.duracionMinutos;
-    s.descripcion = _descCtrl.text; s.activo = _activo;
-    setState(() => _expandido = false); widget.onGuardado();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Servicio guardado'), backgroundColor: widget.negocio.color, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+    s.descripcion = _descCtrl.text;
+    s.activo = _activo;
+    setState(() => _expandido = false);
+    widget.onGuardado();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Servicio guardado'), backgroundColor: widget.negocio.color,
+        behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
   }
 
-  void _cancelar() { _nombreCtrl.dispose(); _precioCtrl.dispose(); _duracionCtrl.dispose(); _descCtrl.dispose(); _reset(); setState(() => _expandido = false); }
+  void _cancelar() {
+    _nombreCtrl.dispose(); _precioCtrl.dispose(); _duracionCtrl.dispose(); _descCtrl.dispose();
+    _reset(); setState(() => _expandido = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.servicio; final color = widget.negocio.color;
+    final s = widget.servicio;
+    final color = widget.negocio.color;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10), borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1)),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1),
+        ),
         child: Column(children: [
-          InkWell(onTap: () => setState(() => _expandido = !_expandido), borderRadius: BorderRadius.circular(14),
-            child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)), child: Icon(widget.negocio.icono, color: color, size: 20)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(s.nombre, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text('${s.duracionMinutos} min · ${s.precio.toStringAsFixed(0)}€', style: const TextStyle(color: Colors.white60, fontSize: 12)),
-              ])),
-              _badge(s.activo), const SizedBox(width: 6),
-              AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
-            ]))),
+          InkWell(
+            onTap: () => setState(() => _expandido = !_expandido),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(children: [
+                Container(width: 40, height: 40,
+                    decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+                    child: Icon(widget.negocio.icono, color: color, size: 20)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(s.nombre, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text('${s.duracionMinutos} min · ${s.precio.toStringAsFixed(0)}€', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                ])),
+                _badge(s.activo),
+                const SizedBox(width: 6),
+                AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
+              ]),
+            ),
+          ),
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
-            secondChild: Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Divider(color: Colors.white.withValues(alpha: 0.15), height: 1), const SizedBox(height: 14),
-              _fieldInline('Nombre', _nombreCtrl, Icons.label, color),
-              const SizedBox(height: 10),
-              Row(children: [Expanded(child: _fieldInline('Precio (€)', _precioCtrl, Icons.euro, color, isNumber: true)), const SizedBox(width: 10), Expanded(child: _fieldInline('Duración (min)', _duracionCtrl, Icons.timer, color, isNumber: true))]),
-              const SizedBox(height: 10),
-              _fieldInline('Descripción', _descCtrl, Icons.description, color, maxLines: 2),
-              const SizedBox(height: 10),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
-                child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
-                  title: const Text('Servicio activo', style: TextStyle(color: Colors.white, fontSize: 13)),
-                  subtitle: Text(_activo ? 'Visible' : 'Oculto', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v))),
-              const SizedBox(height: 14),
-              _botonesGuardar(color, onCancelar: _cancelar, onGuardar: _guardar),
-            ])),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Divider(color: Colors.white.withValues(alpha: 0.15), height: 1),
+                const SizedBox(height: 14),
+                _fieldInline('Nombre', _nombreCtrl, Icons.label, color),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: _fieldInline('Precio (€)', _precioCtrl, Icons.euro, color, isNumber: true)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _fieldInline('Duración (min)', _duracionCtrl, Icons.timer, color, isNumber: true)),
+                ]),
+                const SizedBox(height: 10),
+                _fieldInline('Descripción', _descCtrl, Icons.description, color, maxLines: 2),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
+                  child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
+                      title: const Text('Servicio activo', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      subtitle: Text(_activo ? 'Visible' : 'Oculto', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                      value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v)),
+                ),
+                const SizedBox(height: 14),
+                // Botones: eliminar + cancelar + guardar
+                Row(children: [
+                  Expanded(child: OutlinedButton.icon(
+                    onPressed: widget.onEliminar,
+                    icon: const Icon(Icons.delete_outline, size: 15),
+                    label: const Text('Eliminar', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent),
+                        padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: OutlinedButton(
+                    onPressed: _cancelar,
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                    child: const Text('Cancelar', style: TextStyle(fontSize: 11)),
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: ElevatedButton(
+                    onPressed: _guardar,
+                    style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
+                    child: const Text('Guardar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  )),
+                ]),
+              ]),
+            ),
             crossFadeState: _expandido ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250)),
+            duration: const Duration(milliseconds: 250),
+          ),
         ]),
       ),
     );
   }
 
   Widget _fieldInline(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)), const SizedBox(height: 4),
-      TextFormField(controller: ctrl, maxLines: maxLines, keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: const TextStyle(color: Colors.white, fontSize: 13), decoration: _inputDeco(icon, accent)),
-    ]);
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        TextFormField(controller: ctrl, maxLines: maxLines,
+            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: _inputDeco(icon, accent)),
+      ]);
 }
 
 // ─── TAB TRABAJADORES ──────────────────────────────────────────────────────
@@ -1046,13 +904,13 @@ class _TrabajadoresTabState extends State<_TrabajadoresTab> {
   int _negocioSeleccionado = 0;
 
   List<Trabajador> get _filtrados => trabajadores
-    .where((t) => t.negociosAsignados.contains(negocios[_negocioSeleccionado].nombre))
-    .toList();
+      .where((t) => t.negociosAsignados.contains(negocios[_negocioSeleccionado].nombre))
+      .toList();
 
   void _eliminar(Trabajador t) {
-    showDialog(context: context, builder: (_) => _dialogConfirm(context: context,
-      titulo: 'Dar de baja trabajador', mensaje: '¿Eliminar a ${t.nombre} del sistema?',
-      onConfirm: () { setState(() => trabajadores.remove(t)); Navigator.pop(context); }));
+    showDialog(context: context, builder: (_) => _dialogConfirm(
+        context: context, titulo: 'Dar de baja trabajador', mensaje: '¿Eliminar a ${t.nombre} del sistema?',
+        onConfirm: () { setState(() => trabajadores.remove(t)); Navigator.pop(context); }));
   }
 
   @override
@@ -1061,27 +919,32 @@ class _TrabajadoresTabState extends State<_TrabajadoresTab> {
     return Column(children: [
       _SelectorNegocios(seleccionado: _negocioSeleccionado, onSeleccionado: (i) => setState(() => _negocioSeleccionado = i)),
       _botonAnadir(color: negocio.color, label: 'Añadir trabajador a ${negocio.nombre}',
-        onTap: () => _mostrarDialogoNuevoTrabajador(context, negocio, () => setState(() {}))),
+          onTap: () => _mostrarDialogoNuevoTrabajador(context, negocio, () => setState(() {}))),
       Expanded(
         child: _filtrados.isEmpty
-          ? const Center(child: Text('No hay trabajadores en este negocio', style: TextStyle(color: Colors.white60)))
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              itemCount: _filtrados.length,
-              itemBuilder: (context, i) {
-                final t = _filtrados[i];
-                return _TrabajadorExpansion(key: ValueKey(t), trabajador: t, negocio: negocio,
-                  onEliminado: () => _eliminar(t), onActualizado: () => setState(() {}));
-              }),
+            ? const Center(child: Text('No hay trabajadores en este negocio', style: TextStyle(color: Colors.white60)))
+            : ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          itemCount: _filtrados.length,
+          itemBuilder: (context, i) {
+            final t = _filtrados[i];
+            return _TrabajadorExpansion(key: ValueKey(t), trabajador: t, negocio: negocio,
+                onEliminado: () => _eliminar(t), onActualizado: () => setState(() {}));
+          },
+        ),
       ),
     ]);
   }
 }
 
 class _TrabajadorExpansion extends StatefulWidget {
-  final Trabajador trabajador; final Negocio negocio;
-  final VoidCallback onEliminado; final VoidCallback onActualizado;
+  final Trabajador trabajador;
+  final Negocio negocio;
+  final VoidCallback onEliminado;
+  final VoidCallback onActualizado;
+
   const _TrabajadorExpansion({required Key key, required this.trabajador, required this.negocio, required this.onEliminado, required this.onActualizado}) : super(key: key);
+
   @override
   State<_TrabajadorExpansion> createState() => _TrabajadorExpansionState();
 }
@@ -1092,12 +955,15 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
   late bool _activo;
   late List<String> _servicios;
 
-  @override void initState() { super.initState(); _reset(); }
+  @override
+  void initState() { super.initState(); _reset(); }
 
   @override
   void didUpdateWidget(covariant _TrabajadorExpansion old) {
     super.didUpdateWidget(old);
-    if (old.trabajador != widget.trabajador) { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); _reset(); }
+    if (old.trabajador != widget.trabajador) {
+      _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); _reset();
+    }
   }
 
   void _reset() {
@@ -1109,21 +975,24 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
     _servicios = List.from(t.serviciosEnNegocio(widget.negocio.nombre));
   }
 
-  @override void dispose() { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); super.dispose(); }
+  @override
+  void dispose() { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); super.dispose(); }
 
   void _guardar() {
     final t = widget.trabajador;
     t.nombre = _nombreCtrl.text; t.email = _emailCtrl.text; t.telefono = _telCtrl.text; t.activo = _activo;
     t.negociosYServicios[widget.negocio.nombre] = List.from(_servicios);
     setState(() => _expandido = false); widget.onActualizado();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Trabajador actualizado'), backgroundColor: widget.negocio.color, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Trabajador actualizado'),
+        backgroundColor: widget.negocio.color, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
   }
 
   void _cancelar() { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); _reset(); setState(() => _expandido = false); }
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.trabajador; final color = widget.negocio.color;
+    final t = widget.trabajador;
+    final color = widget.negocio.color;
     final esAdmin = t.isAdminEn(widget.negocio.nombre);
 
     return Padding(
@@ -1131,46 +1000,57 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10), borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1)),
+          color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1),
+        ),
         child: Column(children: [
-          InkWell(onTap: () => setState(() => _expandido = !_expandido), borderRadius: BorderRadius.circular(14),
-            child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-              Stack(children: [
-                CircleAvatar(radius: 20, backgroundColor: color.withValues(alpha: 0.25),
-                  child: Text(t.nombre.isNotEmpty ? t.nombre[0].toUpperCase() : '?', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
-                if (esAdmin) Positioned(right: 0, bottom: 0,
-                  child: Container(width: 14, height: 14, decoration: BoxDecoration(color: Colors.amber, shape: BoxShape.circle, border: Border.all(color: const Color(0xFF1E293B), width: 1.5)),
-                    child: const Icon(Icons.shield, size: 8, color: Colors.white))),
-              ]),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Flexible(child: Text(t.nombre, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
-                  if (esAdmin) ...[const SizedBox(width: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('Admin', style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w600)))],
+          InkWell(
+            onTap: () => setState(() => _expandido = !_expandido),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(children: [
+                Stack(children: [
+                  CircleAvatar(radius: 20, backgroundColor: color.withValues(alpha: 0.25),
+                      child: Text(t.nombre.isNotEmpty ? t.nombre[0].toUpperCase() : '?',
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
+                  if (esAdmin) Positioned(right: 0, bottom: 0,
+                      child: Container(width: 14, height: 14,
+                          decoration: BoxDecoration(color: Colors.amber, shape: BoxShape.circle, border: Border.all(color: const Color(0xFF1E293B), width: 1.5)),
+                          child: const Icon(Icons.shield, size: 8, color: Colors.white))),
                 ]),
-                const SizedBox(height: 2),
-                Text(t.email, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                const SizedBox(height: 2),
-                // Chips de negocios múltiples
-                Wrap(spacing: 4, runSpacing: 2, children: t.negociosAsignados.map((nn) {
-                  final neg = _negocioPorNombre(nn);
-                  if (neg == null) return const SizedBox.shrink();
-                  return Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(color: neg.color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                    child: Text(nn, style: TextStyle(color: neg.color, fontSize: 9)));
-                }).toList()),
-              ])),
-              _badge(t.activo), const SizedBox(width: 6),
-              AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
-            ]))),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(child: Text(t.nombre, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
+                    if (esAdmin) ...[const SizedBox(width: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('Admin', style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.w600)))],
+                  ]),
+                  const SizedBox(height: 2),
+                  Text(t.email, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 2),
+                  Wrap(spacing: 4, runSpacing: 2, children: t.negociosAsignados.map((nn) {
+                    final neg = _negocioPorNombre(nn);
+                    if (neg == null) return const SizedBox.shrink();
+                    return Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: neg.color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+                        child: Text(nn, style: TextStyle(color: neg.color, fontSize: 9)));
+                  }).toList()),
+                ])),
+                _badge(t.activo), const SizedBox(width: 6),
+                AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
+              ]),
+            ),
+          ),
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: _formTrabajador(color),
             crossFadeState: _expandido ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250)),
+            duration: const Duration(milliseconds: 250),
+          ),
         ]),
       ),
     );
@@ -1189,11 +1069,11 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
         _fieldInline('Teléfono', _telCtrl, Icons.phone, color),
         const SizedBox(height: 10),
         Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
-          child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
-            title: const Text('Trabajador activo', style: TextStyle(color: Colors.white, fontSize: 13)),
-            subtitle: Text(_activo ? 'Visible en el sistema' : 'Dado de baja temporalmente', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-            value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v))),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
+            child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
+                title: const Text('Trabajador activo', style: TextStyle(color: Colors.white, fontSize: 13)),
+                subtitle: Text(_activo ? 'Visible en el sistema' : 'Dado de baja temporalmente', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v))),
         const SizedBox(height: 12),
         Text('Servicios en ${widget.negocio.nombre}', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
@@ -1202,19 +1082,19 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
           return Padding(padding: const EdgeInsets.only(bottom: 6), child: GestureDetector(
             onTap: () => setState(() { if (asignado) _servicios.remove(nombre); else _servicios.add(nombre); }),
             child: AnimatedContainer(duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: asignado ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: asignado ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15))),
-              child: Row(children: [
-                Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? color : Colors.white38, size: 18),
-                const SizedBox(width: 10),
-                Text(nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13)),
-              ]))));
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                    color: asignado ? color.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: asignado ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.15))),
+                child: Row(children: [
+                  Icon(asignado ? Icons.check_circle : Icons.radio_button_unchecked, color: asignado ? color : Colors.white38, size: 18),
+                  const SizedBox(width: 10),
+                  Text(nombre, style: TextStyle(color: asignado ? Colors.white : Colors.white60, fontSize: 13)),
+                ])),
+          ));
         }),
         const SizedBox(height: 12),
-        // Botón gestionar roles
         GestureDetector(
           onTap: () => _mostrarGestionRoles(context, widget.trabajador, () { setState(() {}); widget.onActualizado(); }),
           child: Container(
@@ -1234,11 +1114,11 @@ class _TrabajadorExpansionState extends State<_TrabajadorExpansion> {
   }
 
   Widget _fieldInline(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)), const SizedBox(height: 4),
-      TextFormField(controller: ctrl, maxLines: maxLines, keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: const TextStyle(color: Colors.white, fontSize: 13), decoration: _inputDeco(icon, accent)),
-    ]);
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)), const SizedBox(height: 4),
+        TextFormField(controller: ctrl, maxLines: maxLines, keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            style: const TextStyle(color: Colors.white, fontSize: 13), decoration: _inputDeco(icon, accent)),
+      ]);
 }
 
 // ─── TAB USUARIOS ──────────────────────────────────────────────────────────
@@ -1251,38 +1131,179 @@ class _UsuariosTab extends StatefulWidget {
 
 class _UsuariosTabState extends State<_UsuariosTab> {
   int _negocioSeleccionado = 0;
+  final TextEditingController _busquedaCtrl = TextEditingController();
+  String _textoBusqueda = '';
+  // Negocios seleccionados como filtro (vacío = sin filtro)
+  Set<String> _filtroNegocios = {};
+  bool _mostrarFiltros = false;
 
-  // Usuarios que pertenecen al negocio seleccionado
-  List<Usuario> get _filtrados => usuarios
-    .where((u) => u.negociosAsignados.contains(negocios[_negocioSeleccionado].nombre))
-    .toList();
+  @override
+  void dispose() { _busquedaCtrl.dispose(); super.dispose(); }
+
+  List<Usuario> get _usuariosFiltrados {
+    List<Usuario> lista = usuarios;
+
+    // Filtro por negocio seleccionado en el selector superior
+    lista = lista.where((u) => u.negociosAsignados.contains(negocios[_negocioSeleccionado].nombre)).toList();
+
+    // Filtro por negocios adicionales
+    if (_filtroNegocios.isNotEmpty) {
+      lista = lista.where((u) => _filtroNegocios.every((n) => u.negociosAsignados.contains(n))).toList();
+    }
+
+    // Filtro por búsqueda de texto
+    if (_textoBusqueda.isNotEmpty) {
+      final q = _textoBusqueda.toLowerCase();
+      lista = lista.where((u) =>
+      u.nombre.toLowerCase().contains(q) ||
+          u.email.toLowerCase().contains(q) ||
+          u.telefono.contains(q)).toList();
+    }
+
+    return lista;
+  }
 
   void _eliminar(Usuario u) {
-    showDialog(context: context, builder: (_) => _dialogConfirm(context: context,
-      titulo: 'Dar de baja usuario', mensaje: '¿Eliminar a ${u.nombre}? Esta acción no se puede deshacer.',
-      onConfirm: () { setState(() => usuarios.remove(u)); Navigator.pop(context); }));
+    showDialog(context: context, builder: (_) => _dialogConfirm(
+        context: context, titulo: 'Dar de baja usuario',
+        mensaje: '¿Eliminar a ${u.nombre}? Esta acción no se puede deshacer.',
+        onConfirm: () { setState(() => usuarios.remove(u)); Navigator.pop(context); }));
   }
 
   @override
   Widget build(BuildContext context) {
     final negocio = negocios[_negocioSeleccionado];
+    final filtrados = _usuariosFiltrados;
+
     return Stack(children: [
       Column(children: [
-        _SelectorNegocios(seleccionado: _negocioSeleccionado, onSeleccionado: (i) => setState(() => _negocioSeleccionado = i)),
+        _SelectorNegocios(seleccionado: _negocioSeleccionado, onSeleccionado: (i) => setState(() { _negocioSeleccionado = i; _filtroNegocios.clear(); })),
+
+        // ── Barra de búsqueda ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: TextField(
+                  controller: _busquedaCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  onChanged: (v) => setState(() => _textoBusqueda = v),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Buscar por nombre, email o teléfono...',
+                    hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 18),
+                    suffixIcon: _textoBusqueda.isNotEmpty
+                        ? GestureDetector(onTap: () { _busquedaCtrl.clear(); setState(() => _textoBusqueda = ''); },
+                        child: const Icon(Icons.clear, color: Colors.white38, size: 16))
+                        : null,
+                    border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Botón filtros
+            GestureDetector(
+              onTap: () => setState(() => _mostrarFiltros = !_mostrarFiltros),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (_filtroNegocios.isNotEmpty || _mostrarFiltros) ? Colors.white.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _filtroNegocios.isNotEmpty ? Colors.white.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Stack(children: [
+                  const Icon(Icons.filter_list, color: Colors.white, size: 20),
+                  if (_filtroNegocios.isNotEmpty) Positioned(right: 0, top: 0,
+                      child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle))),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+
+        // ── Panel de filtros por negocio ──
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Filtrar por negocios:', style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 6, children: negocios.map((n) {
+                final sel = _filtroNegocios.contains(n.nombre);
+                return GestureDetector(
+                  onTap: () => setState(() { if (sel) _filtroNegocios.remove(n.nombre); else _filtroNegocios.add(n.nombre); }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: sel ? n.color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: sel ? n.color.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(n.icono, color: sel ? n.color : Colors.white38, size: 14),
+                      const SizedBox(width: 5),
+                      Text(n.nombre, style: TextStyle(color: sel ? Colors.white : Colors.white54, fontSize: 11, fontWeight: sel ? FontWeight.w600 : FontWeight.normal)),
+                    ]),
+                  ),
+                );
+              }).toList()),
+              if (_filtroNegocios.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => setState(() => _filtroNegocios.clear()),
+                  child: Text('Limpiar filtros', style: TextStyle(color: Colors.white38, fontSize: 11, decoration: TextDecoration.underline, decorationColor: Colors.white38)),
+                ),
+              ],
+            ]),
+          ),
+          crossFadeState: _mostrarFiltros ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+
+        // ── Contador resultados ──
+        if (_textoBusqueda.isNotEmpty || _filtroNegocios.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            child: Row(children: [
+              Text('${filtrados.length} resultado${filtrados.length != 1 ? 's' : ''}',
+                  style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            ]),
+          ),
+
         Expanded(
-          child: _filtrados.isEmpty
-            ? const Center(child: Text('No hay usuarios en este negocio', style: TextStyle(color: Colors.white60)))
-            : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                itemCount: _filtrados.length,
-                itemBuilder: (context, i) {
-                  final u = _filtrados[i];
-                  return _UsuarioExpansion(key: ValueKey(u), usuario: u, negocio: negocio,
-                    onEliminado: () => _eliminar(u), onActualizado: () => setState(() {}));
-                }),
+          child: filtrados.isEmpty
+              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.search_off, color: Colors.white24, size: 40),
+            const SizedBox(height: 12),
+            Text(_textoBusqueda.isNotEmpty || _filtroNegocios.isNotEmpty
+                ? 'No hay resultados para tu búsqueda'
+                : 'No hay usuarios en este negocio',
+                style: const TextStyle(color: Colors.white60)),
+          ]))
+              : ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+            itemCount: filtrados.length,
+            itemBuilder: (context, i) {
+              final u = filtrados[i];
+              return _UsuarioExpansion(key: ValueKey(u), usuario: u, negocio: negocio,
+                  onEliminado: () => _eliminar(u), onActualizado: () => setState(() {}));
+            },
+          ),
         ),
       ]),
-      // FAB flotante
+
+      // ── FAB flotante ──
       Positioned(
         right: 20, bottom: 20,
         child: FloatingActionButton.extended(
@@ -1296,10 +1317,16 @@ class _UsuariosTabState extends State<_UsuariosTab> {
   }
 }
 
+// ─── USUARIO EXPANSION ────────────────────────────────────────────────────
+
 class _UsuarioExpansion extends StatefulWidget {
-  final Usuario usuario; final Negocio negocio;
-  final VoidCallback onEliminado; final VoidCallback onActualizado;
+  final Usuario usuario;
+  final Negocio negocio;
+  final VoidCallback onEliminado;
+  final VoidCallback onActualizado;
+
   const _UsuarioExpansion({required Key key, required this.usuario, required this.negocio, required this.onEliminado, required this.onActualizado}) : super(key: key);
+
   @override
   State<_UsuarioExpansion> createState() => _UsuarioExpansionState();
 }
@@ -1309,7 +1336,8 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
   late TextEditingController _nombreCtrl, _emailCtrl, _telCtrl;
   late bool _activo;
 
-  @override void initState() { super.initState(); _reset(); }
+  @override
+  void initState() { super.initState(); _reset(); }
 
   @override
   void didUpdateWidget(covariant _UsuarioExpansion old) {
@@ -1325,20 +1353,23 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
     _activo = u.activo;
   }
 
-  @override void dispose() { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); super.dispose(); }
+  @override
+  void dispose() { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); super.dispose(); }
 
   void _guardar() {
     final u = widget.usuario;
     u.nombre = _nombreCtrl.text; u.email = _emailCtrl.text; u.telefono = _telCtrl.text; u.activo = _activo;
     setState(() => _expandido = false); widget.onActualizado();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Usuario actualizado'), backgroundColor: widget.negocio.color, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Usuario actualizado'),
+        backgroundColor: widget.negocio.color, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
   }
 
   void _cancelar() { _nombreCtrl.dispose(); _emailCtrl.dispose(); _telCtrl.dispose(); _reset(); setState(() => _expandido = false); }
 
   @override
   Widget build(BuildContext context) {
-    final u = widget.usuario; final color = widget.negocio.color;
+    final u = widget.usuario;
+    final color = widget.negocio.color;
     final serviciosEnNegocio = u.negociosYServicios[widget.negocio.nombre] ?? [];
 
     return Padding(
@@ -1346,45 +1377,55 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10), borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1)),
+          color: Colors.white.withValues(alpha: _expandido ? 0.16 : 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _expandido ? color.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2), width: _expandido ? 1.5 : 1),
+        ),
         child: Column(children: [
-          InkWell(onTap: () => setState(() => _expandido = !_expandido), borderRadius: BorderRadius.circular(14),
-            child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-              CircleAvatar(radius: 20, backgroundColor: color.withValues(alpha: 0.25),
-                child: Text(u.nombre.isNotEmpty ? u.nombre[0].toUpperCase() : '?', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(u.nombre, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(u.email, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                if (serviciosEnNegocio.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Wrap(spacing: 4, children: serviciosEnNegocio.map((s) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                    child: Text(s, style: TextStyle(color: color, fontSize: 9)))).toList()),
-                ],
-                // Chips de otros negocios
-                if (u.negociosAsignados.length > 1) ...[
-                  const SizedBox(height: 3),
-                  Wrap(spacing: 4, children: u.negociosAsignados.where((nn) => nn != widget.negocio.nombre).map((nn) {
-                    final neg = _negocioPorNombre(nn);
-                    if (neg == null) return const SizedBox.shrink();
-                    return Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(color: neg.color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                      child: Text('+ ${neg.nombre}', style: TextStyle(color: neg.color, fontSize: 9)));
-                  }).toList()),
-                ],
-              ])),
-              _badge(u.activo), const SizedBox(width: 6),
-              AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200), child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
-            ]))),
+          InkWell(
+            onTap: () => setState(() => _expandido = !_expandido),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(children: [
+                CircleAvatar(radius: 20, backgroundColor: color.withValues(alpha: 0.25),
+                    child: Text(u.nombre.isNotEmpty ? u.nombre[0].toUpperCase() : '?',
+                        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16))),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(u.nombre, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(u.email, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  if (serviciosEnNegocio.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Wrap(spacing: 4, children: serviciosEnNegocio.map((s) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+                        child: Text(s, style: TextStyle(color: color, fontSize: 9)))).toList()),
+                  ],
+                  if (u.negociosAsignados.length > 1) ...[
+                    const SizedBox(height: 3),
+                    Wrap(spacing: 4, children: u.negociosAsignados.where((nn) => nn != widget.negocio.nombre).map((nn) {
+                      final neg = _negocioPorNombre(nn);
+                      if (neg == null) return const SizedBox.shrink();
+                      return Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(color: neg.color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+                          child: Text('+ ${neg.nombre}', style: TextStyle(color: neg.color, fontSize: 9)));
+                    }).toList()),
+                  ],
+                ])),
+                _badge(u.activo), const SizedBox(width: 6),
+                AnimatedRotation(turns: _expandido ? 0.5 : 0, duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 22)),
+              ]),
+            ),
+          ),
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: _formUsuario(color),
             crossFadeState: _expandido ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250)),
+            duration: const Duration(milliseconds: 250),
+          ),
         ]),
       ),
     );
@@ -1401,21 +1442,19 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
       _fieldInline('Teléfono', _telCtrl, Icons.phone, color),
       const SizedBox(height: 10),
       Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
-        child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
-          title: const Text('Usuario activo', style: TextStyle(color: Colors.white, fontSize: 13)),
-          subtitle: Text(_activo ? 'Acceso habilitado' : 'Acceso suspendido', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-          value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v))),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withValues(alpha: 0.15))),
+          child: SwitchListTile(contentPadding: EdgeInsets.zero, dense: true,
+              title: const Text('Usuario activo', style: TextStyle(color: Colors.white, fontSize: 13)),
+              subtitle: Text(_activo ? 'Acceso habilitado' : 'Acceso suspendido', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              value: _activo, activeColor: color, onChanged: (v) => setState(() => _activo = v))),
       const SizedBox(height: 12),
-      // Botón para gestionar servicios/negocios
       GestureDetector(
         onTap: () => _mostrarGestionUsuario(context, widget.usuario, () { setState(() {}); widget.onActualizado(); }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withValues(alpha: 0.4))),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.edit_note, color: color, size: 18),
-            const SizedBox(width: 8),
+            Icon(Icons.edit_note, color: color, size: 18), const SizedBox(width: 8),
             Text('Gestionar negocios y servicios', style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
           ]),
         ),
@@ -1426,11 +1465,11 @@ class _UsuarioExpansionState extends State<_UsuarioExpansion> {
   );
 
   Widget _fieldInline(String label, TextEditingController ctrl, IconData icon, Color accent, {bool isNumber = false, int maxLines = 1}) =>
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)), const SizedBox(height: 4),
-      TextFormField(controller: ctrl, maxLines: maxLines, keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: const TextStyle(color: Colors.white, fontSize: 13), decoration: _inputDeco(icon, accent)),
-    ]);
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w500)), const SizedBox(height: 4),
+        TextFormField(controller: ctrl, maxLines: maxLines, keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            style: const TextStyle(color: Colors.white, fontSize: 13), decoration: _inputDeco(icon, accent)),
+      ]);
 }
 
 // ─── HELPERS GLOBALES ──────────────────────────────────────────────────────
@@ -1440,54 +1479,46 @@ InputDecoration _inputDeco(IconData icon, Color accent) => InputDecoration(
   filled: true, fillColor: Colors.white.withValues(alpha: 0.08),
   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2))),
   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2))),
-  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: accent, width: 1.5)));
+  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: accent, width: 1.5)),
+);
 
 Widget _badge(bool activo) => Container(
   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
   decoration: BoxDecoration(color: activo ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
-  child: Text(activo ? 'Activo' : 'Inactivo', style: TextStyle(color: activo ? Colors.greenAccent : Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w500)));
-
-Widget _botonesGuardar(Color color, {required VoidCallback onCancelar, required VoidCallback onGuardar}) =>
-  Row(children: [
-    Expanded(child: OutlinedButton(onPressed: onCancelar,
-      style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-      child: const Text('Cancelar', style: TextStyle(fontSize: 13)))),
-    const SizedBox(width: 10),
-    Expanded(flex: 2, child: ElevatedButton(onPressed: onGuardar,
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
-      child: const Text('Guardar cambios', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)))),
-  ]);
+  child: Text(activo ? 'Activo' : 'Inactivo', style: TextStyle(color: activo ? Colors.greenAccent : Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w500)),
+);
 
 Widget _botonesConBaja(Color color, {required VoidCallback onBaja, required VoidCallback onCancelar, required VoidCallback onGuardar}) =>
-  Row(children: [
-    Expanded(child: OutlinedButton(onPressed: onBaja,
-      style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-      child: const Text('Dar de baja', style: TextStyle(fontSize: 11)))),
-    const SizedBox(width: 8),
-    Expanded(child: OutlinedButton(onPressed: onCancelar,
-      style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-      child: const Text('Cancelar', style: TextStyle(fontSize: 11)))),
-    const SizedBox(width: 8),
-    Expanded(child: ElevatedButton(onPressed: onGuardar,
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
-      child: const Text('Guardar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)))),
-  ]);
+    Row(children: [
+      Expanded(child: OutlinedButton(onPressed: onBaja,
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          child: const Text('Dar de baja', style: TextStyle(fontSize: 11)))),
+      const SizedBox(width: 8),
+      Expanded(child: OutlinedButton(onPressed: onCancelar,
+          style: OutlinedButton.styleFrom(foregroundColor: Colors.white70, side: BorderSide(color: Colors.white.withValues(alpha: 0.3)), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          child: const Text('Cancelar', style: TextStyle(fontSize: 11)))),
+      const SizedBox(width: 8),
+      Expanded(child: ElevatedButton(onPressed: onGuardar,
+          style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), elevation: 0),
+          child: const Text('Guardar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)))),
+    ]);
 
 Widget _dialogConfirm({required BuildContext context, required String titulo, required String mensaje, required VoidCallback onConfirm}) =>
-  AlertDialog(
-    backgroundColor: const Color(0xFF1E293B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    title: Text(titulo, style: const TextStyle(color: Colors.white)),
-    content: Text(mensaje, style: const TextStyle(color: Colors.white70)),
-    actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.white60))),
-      ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-        onPressed: onConfirm, child: const Text('Eliminar')),
-    ]);
+    AlertDialog(
+      backgroundColor: const Color(0xFF1E293B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(titulo, style: const TextStyle(color: Colors.white)),
+      content: Text(mensaje, style: const TextStyle(color: Colors.white70)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.white60))),
+        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            onPressed: onConfirm, child: const Text('Eliminar')),
+      ],
+    );
 
 class _PlaceholderTab extends StatelessWidget {
   final String label;
   const _PlaceholderTab({required this.label});
   @override
   Widget build(BuildContext context) => Center(
-    child: Text('Sección $label\n(próximamente)', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white60, fontSize: 16)));
+      child: Text('Sección $label\n(próximamente)', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white60, fontSize: 16)));
 }
