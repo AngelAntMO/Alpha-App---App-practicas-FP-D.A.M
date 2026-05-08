@@ -31,11 +31,7 @@ class WorkerProfilePage extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0F172A),
-            Color(0xFF1E293B),
-            Color(0xFF334155),
-          ],
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
         ),
       ),
       child: Scaffold(
@@ -47,10 +43,7 @@ class WorkerProfilePage extends StatelessWidget {
           centerTitle: true,
           title: const Text(
             "Perfil trabajador",
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -71,7 +64,6 @@ class WorkerProfilePage extends StatelessWidget {
               width: containerWidth,
               child: Column(
                 children: [
-
                   _buildHeader(user),
 
                   const SizedBox(height: 30),
@@ -85,8 +77,6 @@ class WorkerProfilePage extends StatelessWidget {
                       }
                     },
                   ),
-
-
 
                   AnimatedMenuButton(
                     icon: Icons.calendar_month,
@@ -122,14 +112,12 @@ class WorkerProfilePage extends StatelessWidget {
 
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 40),
-                    child: Divider(
-                      color: Colors.white10,
-                    ),
+                    child: Divider(color: Colors.white10),
                   ),
 
                   const SizedBox(height: 25),
 
-                   AnimatedLogoutButton(
+                  AnimatedLogoutButton(
                     text: "Cerrar sesión",
                     onTap: () async {
                       final bool? confirmar = await showDialog<bool>(
@@ -208,11 +196,8 @@ class WorkerProfilePage extends StatelessWidget {
           .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
-
         if (!snapshot.hasData) {
-          return const CircularProgressIndicator(
-            color: Colors.blueAccent,
-          );
+          return const CircularProgressIndicator(color: Colors.blueAccent);
         }
 
         final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
@@ -231,7 +216,6 @@ class WorkerProfilePage extends StatelessWidget {
 
         return Column(
           children: [
-
             GestureDetector(
               onTap: () {
                 _showAvatarPicker(context, user.uid);
@@ -248,9 +232,7 @@ class WorkerProfilePage extends StatelessWidget {
                 child: CircleAvatar(
                   radius: 50,
                   backgroundColor: const Color(0xFF64B5F6),
-                  backgroundImage: avatar != null
-                      ? AssetImage(avatar)
-                      : null,
+                  backgroundImage: avatar != null ? AssetImage(avatar) : null,
                   child: avatar == null
                       ? Text(
                           iniciales,
@@ -280,28 +262,17 @@ class WorkerProfilePage extends StatelessWidget {
 
             Text(
               puesto,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
             ),
 
             const SizedBox(height: 5),
 
-            Text(
-              empresa,
-              style: const TextStyle(
-                color: Colors.white38,
-              ),
-            ),
+            Text(empresa, style: const TextStyle(color: Colors.white38)),
 
             const SizedBox(height: 15),
 
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
@@ -312,20 +283,13 @@ class WorkerProfilePage extends StatelessWidget {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-
-                  Icon(
-                    Icons.verified,
-                    color: Colors.greenAccent,
-                    size: 18,
-                  ),
+                  Icon(Icons.verified, color: Colors.greenAccent, size: 18),
 
                   SizedBox(width: 8),
 
                   Text(
                     "Trabajador activo",
-                    style: TextStyle(
-                      color: Colors.white,
-                    ),
+                    style: TextStyle(color: Colors.white),
                   ),
                 ],
               ),
@@ -341,51 +305,37 @@ class WorkerProfilePage extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-
         return Container(
           height: 320,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E293B),
-                Color(0xFF334155),
-              ],
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
             ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(30),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: GridView.builder(
             padding: const EdgeInsets.all(20),
             itemCount: avatarOptions.length,
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
             ),
             itemBuilder: (context, index) {
-
               final avatar = avatarOptions[index];
 
               return GestureDetector(
                 onTap: () async {
-
                   await FirebaseFirestore.instance
                       .collection('workers')
                       .doc(uid)
-                      .set({
-                    'avatar': avatar,
-                  }, SetOptions(merge: true));
+                      .set({'avatar': avatar}, SetOptions(merge: true));
 
                   if (!context.mounted) return;
 
                   Navigator.pop(context);
                 },
-                child: CircleAvatar(
-                  backgroundImage: AssetImage(avatar),
-                ),
+                child: CircleAvatar(backgroundImage: AssetImage(avatar)),
               );
             },
           ),
@@ -394,11 +344,7 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showEditWorkerProfile(
-    BuildContext context,
-    String uid,
-  ) async {
-
+  void _showEditWorkerProfile(BuildContext context, String uid) async {
     final doc = await FirebaseFirestore.instance
         .collection('workers')
         .doc(uid)
@@ -406,22 +352,15 @@ class WorkerProfilePage extends StatelessWidget {
 
     final data = doc.data() ?? {};
 
-    final nameController = TextEditingController(
-      text: data['nombre'] ?? '',
-    );
+    final nameController = TextEditingController(text: data['nombre'] ?? '');
 
-    final lastController = TextEditingController(
-      text: data['apellidos'] ?? '',
-    );
+    final lastController = TextEditingController(text: data['apellidos'] ?? '');
 
-    final phoneController = TextEditingController(
-      text: data['telefono'] ?? '',
-    );
+    final phoneController = TextEditingController(text: data['telefono'] ?? '');
 
     final addressController = TextEditingController(
       text: data['direccion'] ?? '',
     );
-
 
     if (!context.mounted) return;
 
@@ -430,7 +369,6 @@ class WorkerProfilePage extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-
         return Container(
           padding: EdgeInsets.only(
             left: 20,
@@ -440,25 +378,17 @@ class WorkerProfilePage extends StatelessWidget {
           ),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E293B),
-                Color(0xFF334155),
-              ],
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
             ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(30),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-
               _buildInput(nameController, "Nombre"),
               _buildInput(lastController, "Apellidos"),
               _buildInput(phoneController, "Teléfono"),
               _buildInput(addressController, "Dirección"),
-             
 
               const SizedBox(height: 15),
 
@@ -466,19 +396,15 @@ class WorkerProfilePage extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-
                     await FirebaseFirestore.instance
                         .collection('workers')
                         .doc(uid)
                         .set({
-
-                      'nombre': nameController.text.trim(),
-                      'apellidos': lastController.text.trim(),
-                      'telefono': phoneController.text.trim(),
-                      'direccion': addressController.text.trim(),
-                     
-
-                    }, SetOptions(merge: true));
+                          'nombre': nameController.text.trim(),
+                          'apellidos': lastController.text.trim(),
+                          'telefono': phoneController.text.trim(),
+                          'direccion': addressController.text.trim(),
+                        }, SetOptions(merge: true));
 
                     if (!context.mounted) return;
 
@@ -494,28 +420,18 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-
-
   void _showSchedules(BuildContext context, String uid) {
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-
         return Container(
           height: 400,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E293B),
-                Color(0xFF334155),
-              ],
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
             ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(30),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: const Center(
             child: Text(
@@ -529,25 +445,17 @@ class WorkerProfilePage extends StatelessWidget {
   }
 
   void _showTasks(BuildContext context, String uid) {
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-
         return Container(
           height: 400,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E293B),
-                Color(0xFF334155),
-              ],
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
             ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(30),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: const Center(
             child: Text(
@@ -560,30 +468,19 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showCheckHistory(
-    BuildContext context,
-    String uid,
-  ) {
-
+  void _showCheckHistory(BuildContext context, String uid) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-
         return Container(
           height: MediaQuery.of(context).size.height * 0.7,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E293B),
-                Color(0xFF334155),
-              ],
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
             ),
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(30),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -593,11 +490,8 @@ class WorkerProfilePage extends StatelessWidget {
                 .orderBy('fecha', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
-
               if (!snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
 
               final docs = snapshot.data!.docs;
@@ -606,12 +500,9 @@ class WorkerProfilePage extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
 
-                  final data =
-                      docs[index].data() as Map<String, dynamic>;
-
-                  final fecha =
-                      (data['fecha'] as Timestamp).toDate();
+                  final fecha = (data['fecha'] as Timestamp).toDate();
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -626,15 +517,11 @@ class WorkerProfilePage extends StatelessWidget {
                       ),
                       title: Text(
                         "${fecha.day}/${fecha.month}/${fecha.year}",
-                        style: const TextStyle(
-                          color: Colors.white,
-                        ),
+                        style: const TextStyle(color: Colors.white),
                       ),
                       subtitle: Text(
                         "${fecha.hour}:${fecha.minute}",
-                        style: const TextStyle(
-                          color: Colors.white54,
-                        ),
+                        style: const TextStyle(color: Colors.white54),
                       ),
                     ),
                   );
@@ -647,11 +534,7 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildInput(
-    TextEditingController controller,
-    String hint,
-  ) {
-
+  Widget _buildInput(TextEditingController controller, String hint) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -659,9 +542,7 @@ class WorkerProfilePage extends StatelessWidget {
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: Colors.white54,
-          ),
+          hintStyle: const TextStyle(color: Colors.white54),
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.05),
           border: OutlineInputBorder(
@@ -675,7 +556,6 @@ class WorkerProfilePage extends StatelessWidget {
 }
 
 class AnimatedMenuButton extends StatefulWidget {
-
   final IconData icon;
   final String title;
   final VoidCallback onTap;
@@ -688,81 +568,75 @@ class AnimatedMenuButton extends StatefulWidget {
   });
 
   @override
-  State<AnimatedMenuButton> createState() =>
-      _AnimatedMenuButtonState();
+  State<AnimatedMenuButton> createState() => _AnimatedMenuButtonState();
 }
 
-class _AnimatedMenuButtonState
-    extends State<AnimatedMenuButton> {
-
+class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
   bool pressed = false;
+  bool hovering = false;
 
   @override
   Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovering = true),
+      onExit: (_) => setState(() => hovering = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => pressed = true),
 
-    return GestureDetector(
-      onTapDown: (_) => setState(() => pressed = true),
+        onTapUp: (_) {
+          setState(() => pressed = false);
+          widget.onTap();
+        },
 
-      onTapUp: (_) {
-        setState(() => pressed = false);
-        widget.onTap();
-      },
+        onTapCancel: () => setState(() => pressed = false),
 
-      onTapCancel: () => setState(() => pressed = false),
-
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 120),
-        scale: pressed ? 0.96 : 1.0,
-
-        child: AnimatedContainer(
+        child: AnimatedScale(
           duration: const Duration(milliseconds: 120),
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
+          scale: pressed ? 0.96 : (hovering ? 1.04 : 1.0),
+
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: hovering
+                  ? Colors.blueAccent.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
-          ),
 
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 10,
-                sigmaY: 10,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                child: Row(
-                  children: [
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(widget.icon, color: const Color(0xFF64B5F6)),
 
-                    Icon(
-                      widget.icon,
-                      color: const Color(0xFF64B5F6),
-                    ),
+                      const SizedBox(width: 15),
 
-                    const SizedBox(width: 15),
-
-                    Text(
-                      widget.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
 
-                    const Spacer(),
+                      const Spacer(),
 
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white24,
-                      size: 14,
-                    ),
-                  ],
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white24,
+                        size: 14,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -774,7 +648,6 @@ class _AnimatedMenuButtonState
 }
 
 class AnimatedLogoutButton extends StatefulWidget {
-
   final String text;
   final VoidCallback onTap;
 
@@ -785,18 +658,14 @@ class AnimatedLogoutButton extends StatefulWidget {
   });
 
   @override
-  State<AnimatedLogoutButton> createState() =>
-      _AnimatedLogoutButtonState();
+  State<AnimatedLogoutButton> createState() => _AnimatedLogoutButtonState();
 }
 
-class _AnimatedLogoutButtonState
-    extends State<AnimatedLogoutButton> {
-
+class _AnimatedLogoutButtonState extends State<AnimatedLogoutButton> {
   bool pressed = false;
 
   @override
   Widget build(BuildContext context) {
-
     return GestureDetector(
       onTapDown: (_) => setState(() => pressed = true),
 
@@ -824,10 +693,7 @@ class _AnimatedLogoutButtonState
           child: Center(
             child: Text(
               widget.text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ),
         ),
