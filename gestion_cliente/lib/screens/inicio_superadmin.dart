@@ -208,7 +208,7 @@ class _InicioAdminState extends State<InicioSuperAdmin> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent, elevation: 0,
-          title: const Text('Panel Administrador', style: TextStyle(color: Colors.white)),
+          title: const Text('Panel Super Administrador', style: TextStyle(color: Colors.white)),
           actions: [
             IconButton(icon: const Icon(Icons.logout, color: Colors.white),
                 onPressed: () async => await FirebaseAuth.instance.signOut()),
