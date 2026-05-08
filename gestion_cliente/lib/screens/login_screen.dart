@@ -53,7 +53,7 @@ class _LoginPageState extends State<LoginPage> {
       builder: (dialogContext) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+          backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("🔐 Clave Maestra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           content: SizedBox(
@@ -115,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: AlertDialog(
-            backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+            backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text("Verificación", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
             content: SizedBox(
@@ -158,31 +158,50 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Future<void> _procederLoginFirebase(String email, String password) async {
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        FirebaseMessaging.instance.getToken().then((token) {
-          if (token != null) {
-            FirebaseFirestore.instance.collection('users').doc(user.uid).set({'fcmToken': token}, SetOptions(merge: true));
-          }
-        }).catchError((e) => debugPrint("Error FCM ignorado: $e"));
+Future<void> _procederLoginFirebase(String email, String password) async {
+  try {
+    await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+
+        if (token != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set(
+                {'fcmToken': token},
+                SetOptions(merge: true),
+              );
+        }
+      } catch (e) {
+        debugPrint("Error FCM ignorado: $e");
       }
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      Future.microtask(() {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const RootPage()), (route) => false);
-      });
-    } on FirebaseAuthException catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      _mostrarMensaje("Error: ${e.message}");
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      _mostrarMensaje("Error inesperado");
     }
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const RootPage()),
+      (route) => false,
+    );
+
+  } on FirebaseAuthException catch (e) {
+    if (mounted) setState(() => _isLoading = false);
+    _mostrarMensaje("Error: ${e.message}");
+  } catch (e) {
+    if (mounted) setState(() => _isLoading = false);
+    _mostrarMensaje("Error inesperado");
   }
+}
 
   Future<void> _sendEmail(String email, String code) async {
     try {
@@ -280,9 +299,9 @@ class _LoginPageState extends State<LoginPage> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: child,
         ),
