@@ -72,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.9),
+          backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.9),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("Verificación 2FA", 
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
@@ -174,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
     builder: (context) => BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
       child: AlertDialog(
-        backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+        backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Configurar App", 
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), 
@@ -290,7 +290,7 @@ class _LoginPageState extends State<LoginPage> {
     builder: (dialogContext) => BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // Efecto de cristal esmerilado
       child: AlertDialog(
-        backgroundColor: const Color(0xFF1E293B).withOpacity(0.95), // Fondo oscuro AlphaApp
+        backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95), // Fondo oscuro AlphaApp
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           "Verificación de Seguridad",
@@ -323,9 +323,9 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: InputDecoration(
                   counterText: "", // Oculta el contador de caracteres
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: Colors.white.withValues(alpha: 0.05),
                   hintText: "000000",
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.white24),
@@ -384,7 +384,7 @@ class _LoginPageState extends State<LoginPage> {
       builder: (dialogContext) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+          backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("🔐 Clave Maestra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           content: SizedBox(
@@ -426,7 +426,7 @@ class _LoginPageState extends State<LoginPage> {
       builder: (dialogContext) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+          backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("Verificación Email", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           content: Column(
@@ -577,9 +577,9 @@ class _LoginPageState extends State<LoginPage> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: child,
         ),
@@ -587,7 +587,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
   
-  void _reintentarConVentana(String secretLimpio, int time) {}
 }
 
 class HomePage {
