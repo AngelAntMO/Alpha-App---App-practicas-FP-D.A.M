@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_worker.dart';
 import 'package:gestion_cliente/screens/worker_check_screen.dart';
 
@@ -62,13 +61,7 @@ class _InicioWorkerState extends State<InicioWorker>
               fit: BoxFit.contain,
             ),
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70),
-              onPressed: () => FirebaseAuth.instance.signOut(),
-            ),
-            const SizedBox(width: 10),
-          ],
+
         ),
 
         body: SingleChildScrollView(
