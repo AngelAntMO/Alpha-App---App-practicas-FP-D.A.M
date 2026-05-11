@@ -1,11 +1,17 @@
 import 'dart:math';
 import 'dart:convert';
 import 'dart:ui';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
+import 'package:otp/otp.dart';
+import 'package:base32/base32.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+
+// Importa tus pantallas locales
 import 'package:gestion_cliente/screens/root_page.dart';
 import 'register_screen.dart';
 
@@ -23,6 +29,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController otpController = TextEditingController();
   final TextEditingController masterPassController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
 
   bool _isLoading = false;
   bool _isAdminMode = false;
@@ -34,8 +41,332 @@ class _LoginPageState extends State<LoginPage> {
     passwordController.dispose();
     otpController.dispose();
     masterPassController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
+
+  // --- LÓGICA DE LOGIN PRINCIPAL ---
+
+  Future<void> login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _mostrarMensaje("Rellena todos los campos");
+      return;
+    }
+
+    if (_isAdminMode) {
+      setState(() => _isLoading = true);
+      _procederLoginFirebase(email, password);
+    } else {
+      _mostrarSelectorMetodo(email, password);
+    }
+  }
+
+  // --- SELECTOR DE MÉTODO (DISEÑO MANTENIDO) ---
+
+  void _mostrarSelectorMetodo(String email, String password) {
+    showDialog(
+      context: context,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E293B).withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Verificación 2FA", 
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _metodoItem(
+                icon: Icons.email_outlined,
+                title: "Código por Email",
+                onTap: () {
+                  Navigator.pop(context);
+                  _iniciarFlujoEmail(email, password);
+                },
+              ),
+              const SizedBox(height: 15),
+              _metodoItem(
+                icon: Icons.phonelink_lock_outlined,
+                title: "Google Authenticator",
+                onTap: () {
+                  Navigator.pop(context);
+                  _iniciarFlujoAuthenticator(email, password);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _metodoItem({required IconData icon, required String title, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: _glassField(
+        Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.blueAccent),
+              const SizedBox(width: 15),
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- FLUJO 1: EMAIL (TU CÓDIGO ORIGINAL) ---
+
+  void _iniciarFlujoEmail(String email, String password) {
+    _generatedCode = (Random().nextInt(900000) + 100000).toString();
+    _sendEmail(email, _generatedCode!);
+    _mostrarPopUpGmail(email, password);
+  }
+
+  // --- FLUJO 2: AUTHENTICATOR (QR Y TOTP) ---
+
+  Future<void> _iniciarFlujoAuthenticator(String email, String password) async {
+  try {
+    // 1. Buscamos el usuario que tenga ese email en la colección 'users'
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    String? secret;
+    String docId;
+
+    if (querySnapshot.docs.isNotEmpty) {
+      // Si el usuario existe, sacamos su ID y su secreto (si lo tiene)
+      var userDoc = querySnapshot.docs.first;
+      docId = userDoc.id;
+      secret = userDoc.data().containsKey('mfa_secret') ? userDoc.data()['mfa_secret'] : null;
+    } else {
+      // Si el usuario no existe en la colección 'users', usamos el email como ID temporal
+      // o puedes mostrar un error de "Usuario no encontrado"
+      docId = email; 
+    }
+
+    if (secret == null) {
+      // Generar nueva clave secreta si no existe
+      Uint8List randomBytes = Uint8List.fromList(List.generate(10, (i) => Random().nextInt(256)));
+      String newSecret = base32.encode(randomBytes);
+      _mostrarConfiguracionQR(docId, email, password, newSecret);
+    } else {
+      _mostrarPopUpValidacionTOTP(email, password, secret);
+    }
+  } catch (e) {
+    print("Error Firestore: $e"); // Esto te dirá el error real en la consola
+    _mostrarMensaje("Error de permisos o conexión");
+  }
+}
+  void _mostrarConfiguracionQR(String docId, String email, String password, String secret) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: AlertDialog(
+        backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Configurar App", 
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), 
+          textAlign: TextAlign.center
+        ),
+        content: SizedBox( // <-- IMPORTANTE: Definimos un ancho fijo para el diálogo
+          width: 300,
+          child: SingleChildScrollView( // <-- Evita errores de overflow
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Escanea este QR con Google Authenticator", 
+                  style: TextStyle(color: Colors.white70, fontSize: 13), 
+                  textAlign: TextAlign.center
+                ),
+                const SizedBox(height: 20),
+                // Contenedor del QR con tamaño definido
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white, 
+                    borderRadius: BorderRadius.circular(10)
+                  ),
+                  child: SizedBox(
+                    width: 180,
+                    height: 180,
+                    child: QrImageView(
+                      data: "otpauth://totp/AlphaApp:$email?secret=$secret&issuer=AlphaApp",
+                      version: QrVersions.auto,
+                      // Eliminamos restricciones intrínsecas
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  "Clave manual: $secret", 
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await FirebaseFirestore.instance.collection('users').doc(docId).set({
+                  'mfa_secret': secret
+                }, SetOptions(merge: true));
+                
+                if (!mounted) return;
+                Navigator.pop(context);
+                
+                // Pequeña pausa para que el sistema procese el cierre antes de abrir el siguiente
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  _mostrarPopUpValidacionTOTP(email, password, secret);
+                });
+              } catch (e) {
+                _mostrarMensaje("Error al guardar: $e");
+              }
+            },
+            child: const Text("CONFIRMAR VINCULACIÓN"),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  void _verificarCodigoYEntrar(String email, String password, String secret, BuildContext dialogContext) {
+    String inputCode = _otpController.text.trim();
+    int time = DateTime.now().toUtc().millisecondsSinceEpoch;
+
+    // Generamos el esperado con la configuración de Google
+    String expected = OTP.generateTOTPCodeString(
+      secret, 
+      time,
+      interval: 30,
+      algorithm: Algorithm.SHA1,
+      isGoogle: true
+    );
+
+    if (inputCode == expected) {
+      // 1. Cerramos el diálogo usando el contexto del propio diálogo
+      Navigator.pop(dialogContext); 
+      
+      // 2. Activamos el loader en la pantalla principal
+      setState(() => _isLoading = true);
+
+      // 3. Ejecutamos el login final
+      _procederLoginFirebase(email, password);
+    } else {
+      // Si falla, mostramos error pero NO cerramos el diálogo
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Código incorrecto"), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+   void _mostrarPopUpValidacionTOTP(String email, String password, String secret) {
+  // Limpiamos el controlador por si acaso había algo de un intento anterior
+  _otpController.clear();
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8), // Efecto de cristal esmerilado
+      child: AlertDialog(
+        backgroundColor: const Color(0xFF1E293B).withOpacity(0.95), // Fondo oscuro AlphaApp
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Verificación de Seguridad",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: SizedBox(
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Introduzca el código de 6 dígitos generado por su aplicación de autenticación.",
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 25),
+              // Campo de texto estilizado
+              TextField(
+                controller: _otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 24, 
+                  letterSpacing: 8,
+                  fontWeight: FontWeight.bold
+                ),
+                decoration: InputDecoration(
+                  counterText: "", // Oculta el contador de caracteres
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  hintText: "000000",
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text(
+              "CANCELAR", 
+              style: TextStyle(color: Colors.white54, fontSize: 12)
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => _verificarCodigoYEntrar(email, password, secret, dialogContext),
+            child: const Text(
+              "VERIFICAR", 
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  // --- MÉTODOS DE APOYO ORIGINALES ---
 
   void _gestionarCambioAdmin(bool? valor) {
     if (valor == true) {
@@ -198,8 +529,23 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
-        );
-      },
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cerrar", style: TextStyle(color: Colors.white54))),
+            ElevatedButton(
+              onPressed: () {
+                if (otpController.text == _generatedCode) {
+                  Navigator.pop(dialogContext);
+                  setState(() => _isLoading = true);
+                  _procederLoginFirebase(email, password);
+                } else {
+                  _mostrarMensaje("Código incorrecto");
+                }
+              },
+              child: const Text("Verificar"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -413,6 +759,12 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+  
+  void _reintentarConVentana(String secretLimpio, int time) {}
+}
+
+class HomePage {
+  const HomePage();
 }
 
 class AnimatedTextField extends StatelessWidget {
