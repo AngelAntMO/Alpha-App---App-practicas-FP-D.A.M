@@ -384,7 +384,7 @@ class _LoginPageState extends State<LoginPage> {
       builder: (dialogContext) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
+          backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text("🔐 Clave Maestra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           content: SizedBox(
@@ -577,9 +577,9 @@ class _LoginPageState extends State<LoginPage> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: child,
         ),

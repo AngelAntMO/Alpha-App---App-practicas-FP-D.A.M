@@ -5,7 +5,6 @@ import 'firebase_options.dart';
 
 // Importaciones de tus pantallas
 import 'package:gestion_cliente/core/app_themes.dart';
-import 'package:gestion_cliente/screens/inicio_screen.dart'; // Asumo que es PaginaInicio
 import 'package:gestion_cliente/screens/splash_screen.dart';
 import 'package:gestion_cliente/screens/login_screen.dart';
 import 'package:gestion_cliente/screens/register_screen.dart';
@@ -17,8 +16,8 @@ import 'package:gestion_cliente/screens/servicios/peluqueria_page.dart';
 import 'package:gestion_cliente/screens/servicios/fisioterapia_page.dart';
 import 'package:gestion_cliente/screens/servicios/academia_page.dart';
 import 'package:gestion_cliente/notifications_service.dart';
+import 'package:gestion_cliente/screens/root_page.dart';
 
-// Asegúrate de que esta variable esté definida si la usas para notificaciones
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
@@ -107,7 +106,7 @@ class AuthWrapper extends StatelessWidget {
         // CASO A: USUARIO LOGUEADO
         // Entra directamente a la App sin pasar por el Splash de 3 segundos.
         if (snapshot.hasData) {
-          return const PaginaInicio(); 
+          return const RootPage(); 
         }
 
         // CASO B: USUARIO NO LOGUEADO
