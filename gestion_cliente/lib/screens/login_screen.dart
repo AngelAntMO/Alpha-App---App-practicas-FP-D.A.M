@@ -385,8 +385,14 @@ class _LoginPageState extends State<LoginPage> {
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: AlertDialog(
           backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("🔐 Clave Maestra", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            "🔐 Clave Maestra",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
           content: SizedBox(
             width: 300,
             child: _glassField(
@@ -395,12 +401,22 @@ class _LoginPageState extends State<LoginPage> {
                 obscureText: true,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(border: InputBorder.none, hintText: "••••", hintStyle: TextStyle(color: Colors.white24)),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: "••••",
+                  hintStyle: TextStyle(color: Colors.white24),
+                ),
               ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text("Cancelar", style: TextStyle(color: Colors.white54))),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
             ElevatedButton(
               onPressed: () {
                 if (masterPassController.text == _masterPasswordActual) {
@@ -418,30 +434,98 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Future<void> login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _mostrarMensaje("Rellena todos los campos");
+      return;
+    }
+
+    if (_isAdminMode) {
+      setState(() => _isLoading = true);
+      _procederLoginFirebase(email, password);
+    } else {
+      _generatedCode = (Random().nextInt(900000) + 100000).toString();
+      _sendEmail(email, _generatedCode!);
+      _mostrarPopUpGmail(email, password);
+    }
+  }
+
   void _mostrarPopUpGmail(String email, String password) {
     otpController.clear();
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1E293B).withOpacity(0.95),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text("Verificación Email", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Código enviado al email", style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 20),
-              _glassField(
-                TextField(
-                  controller: otpController,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 22, letterSpacing: 5),
-                  decoration: const InputDecoration(border: InputBorder.none, hintText: "000000", hintStyle: TextStyle(color: Colors.white24, letterSpacing: 0)),
+      builder: (dialogContext) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.95),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              "Verificación",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            content: SizedBox(
+              width: 300,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Código enviado al email",
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 20),
+                  _glassField(
+                    TextField(
+                      controller: otpController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        letterSpacing: 5,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: "000000",
+                        hintStyle: TextStyle(
+                          color: Colors.white24,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text(
+                  "Cerrar",
+                  style: TextStyle(color: Colors.white54),
                 ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (otpController.text == _generatedCode) {
+                    Navigator.pop(dialogContext);
+                    setState(() => _isLoading = true);
+                    _procederLoginFirebase(email, password);
+                  } else {
+                    _mostrarMensaje("Código incorrecto");
+                  }
+                },
+                child: const Text("Verificar"),
               ),
             ],
           ),
@@ -466,71 +550,144 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _procederLoginFirebase(String email, String password) async {
-  try {
-    // Aquí haces el login real en Firebase
-    await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-    
-    if (!mounted) return;
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    // Navegamos a la Home y borramos el historial (para que no pueda volver al login)
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const RootPage()),
-      (route) => false,
-    );
-  } catch (e) {
-    setState(() => _isLoading = false);
-    _mostrarMensaje("Error al iniciar sesión: $e");
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        try {
+          String? token;
+
+          for (int i = 0; i < 3; i++) {
+            token = await FirebaseMessaging.instance.getToken();
+            if (token != null) break;
+            await Future.delayed(const Duration(milliseconds: 800));
+          }
+
+          if (token != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .set({'fcmToken': token}, SetOptions(merge: true));
+          }
+        } catch (e) {
+          debugPrint("Error al obtener/guardar token FCM: $e");
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const RootPage()),
+        (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _mostrarMensaje("Error: ${e.message}");
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _mostrarMensaje("Error inesperado");
+    }
   }
-}
 
   Future<void> _sendEmail(String email, String code) async {
     try {
       await http.post(
         Uri.parse('https://api.emailjs.com/api/v1.0/email/send'),
-        headers: {'Content-Type': 'application/json', 'origin': 'http://localhost'},
+        headers: {
+          'Content-Type': 'application/json',
+          'origin': 'http://localhost',
+        },
         body: json.encode({
           'service_id': 'service_sziirym',
           'template_id': 'template_ecuyrkp',
           'user_id': 'NRbnnLuNptqqUU1eb',
-          'template_params': {'user_email': email, 'passcode': code, 'time': '15 minutos'}
+          'template_params': {
+            'user_email': email,
+            'passcode': code,
+            'time': '15 minutos',
+          },
         }),
       );
-    } catch (e) { debugPrint("EmailJS Error: $e"); }
+    } catch (e) {
+      debugPrint("EmailJS Error: $e");
+    }
   }
 
   void _mostrarMensaje(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.redAccent));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.redAccent),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)]),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)],
+        ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('Iniciar sesión', style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent, elevation: 0),
+        appBar: AppBar(
+          title: const Text(
+            'Iniciar sesión',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
         body: Center(
           child: SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('assets/images/LogoAlphaAppPagInicio.png', width: 180, errorBuilder: (c, e, s) => const Icon(Icons.lock, size: 50, color: Colors.white)),
+                Image.asset(
+                  'assets/images/LogoAlphaAppPagInicio.png',
+                  width: 180,
+                  errorBuilder: (c, e, s) =>
+                      const Icon(Icons.lock, size: 50, color: Colors.white),
+                ),
                 const SizedBox(height: 40),
+
+                // LONGITUD AJUSTADA A 350
                 SizedBox(
                   width: 350,
                   child: Column(
                     children: [
-                      _glassField(AnimatedTextField(label: 'Email', controller: emailController, textInputAction: TextInputAction.next)),
+                      _glassField(
+                        AnimatedTextField(
+                          label: 'Email',
+                          controller: emailController,
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
                       const SizedBox(height: 20),
-                      _glassField(AnimatedTextField(label: 'Contraseña', isPasswordField: true, controller: passwordController, onSubmitted: login)),
+                      _glassField(
+                        AnimatedTextField(
+                          label: 'Contraseña',
+                          isPasswordField: true,
+                          controller: passwordController,
+                          onSubmitted: login,
+                        ),
+                      ),
                       const SizedBox(height: 15),
                       _glassField(
                         CheckboxListTile(
-                          title: const Text("Acceso Admin", style: TextStyle(color: Colors.white, fontSize: 13)),
+                          title: const Text(
+                            "Acceso Admin",
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
                           value: _isAdminMode,
                           activeColor: Colors.blueAccent,
                           onChanged: _gestionarCambioAdmin,
@@ -540,27 +697,43 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 30),
                 GestureDetector(
                   onTap: _isLoading ? null : login,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    height: 55, width: 220,
+                    height: 55,
+                    width: 220,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(30),
-                      gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)]),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                      ),
                     ),
                     child: Center(
-                      child: _isLoading 
-                        ? const CircularProgressIndicator(color: Colors.white) 
-                        : const Text('Entrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Entrar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
-                  child: const Text('¿No tienes cuenta? Regístrate', style: TextStyle(color: Colors.white70)),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegisterPage()),
+                  ),
+                  child: const Text(
+                    '¿No tienes cuenta? Regístrate',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ),
               ],
             ),
@@ -600,7 +773,14 @@ class AnimatedTextField extends StatelessWidget {
   final TextEditingController controller;
   final TextInputAction? textInputAction;
   final VoidCallback? onSubmitted;
-  const AnimatedTextField({required this.label, this.isPasswordField = false, required this.controller, this.textInputAction, this.onSubmitted, super.key});
+  const AnimatedTextField({
+    required this.label,
+    this.isPasswordField = false,
+    required this.controller,
+    this.textInputAction,
+    this.onSubmitted,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
