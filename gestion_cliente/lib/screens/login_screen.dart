@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:otp/otp.dart';
 import 'package:base32/base32.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 // Importa tus pantallas locales
 import 'package:gestion_cliente/screens/root_page.dart';
@@ -163,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
       _mostrarPopUpValidacionTOTP(email, password, secret);
     }
   } catch (e) {
-    print("Error Firestore: $e"); // Esto te dirá el error real en la consola
+     debugPrint("Error Firestore: $e"); // Esto te dirá el error real en la consola
     _mostrarMensaje("Error de permisos o conexión");
   }
 }
