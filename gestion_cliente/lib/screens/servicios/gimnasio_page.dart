@@ -4,6 +4,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:gestion_cliente/notifications_service.dart';
 
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const _kColeccion = 'reservas';
+const _kEstadoActiva = 'activa';
+const _kCampoFecha = 'fecha';
+const _kCampoHora = 'hora';
+const _kCampoEstado = 'estado';
+const _kCampoUserId = 'userId';
+
+const _kMaxReservas = 5;
+const _kMaxSlotsPorDia = 8;
+
 class GimnasioPage extends StatefulWidget {
   final String userId;
   final String negocio;
@@ -75,7 +87,7 @@ class _GimnasioPageState extends State<GimnasioPage> {
     final snapshot = await _db
         .collection('reservas')
         .where('negocioRef', isEqualTo: negocioRef)
-        .where('estado', isEqualTo: 'activa')
+        .where('estado', isEqualTo:   'activa')
         .get();
 
     final Map<DateTime, int> map = {};
@@ -154,18 +166,32 @@ class _GimnasioPageState extends State<GimnasioPage> {
     setState(() => _loading = true);
 
     try {
-      // 🔒 1. LIMITE USUARIO (SOLO GIMNASIO)
-      final misReservas = await _db
-          .collection('reservas')
-          .where('userId', isEqualTo: widget.userId)
-          .where('negocioRef', isEqualTo: negocioRef)
-          .where('estado', isEqualTo: 'activa')
-          .get();
+      // VALIDACIONES
+     final misReservas = await _db
+        .collection(_kColeccion)
+        .where(_kCampoUserId, isEqualTo: widget.userId)
+        .where('negocioRef', isEqualTo: negocioRef)
+        .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+        .get();
 
-      if (misReservas.docs.length >= maxReservasUsuario) {
-        _msg("Máximo $maxReservasUsuario reservas activas en gimnasio");
-        return;
+      if (misReservas.docs.length >= _kMaxReservas) {
+        throw Exception('Máximo $_kMaxReservas reservas activas');
       }
+
+       final claseDoc = await FirebaseFirestore.instance
+        .collection('clases')
+        .doc(_actividadSeleccionada)
+        .get();
+
+    if (!claseDoc.exists) {
+      throw Exception('La clase no existe');
+    }
+
+    final employeeID = claseDoc.data()?['employeeID'];
+
+    if (employeeID == null || employeeID.toString().isEmpty) {
+      throw Exception('La clase no tiene employeeID asignado');
+    }
 
       // 🔒 2. EVITAR DUPLICADO MISMA CLASE
       final duplicado = await _db
@@ -182,6 +208,9 @@ class _GimnasioPageState extends State<GimnasioPage> {
         _msg("Ya tienes esta reserva");
         return;
       }
+
+
+       
 
       // 🔒 3. CUPOS (15 por clase/hora)
       final snapshot = await _db
@@ -204,6 +233,7 @@ class _GimnasioPageState extends State<GimnasioPage> {
         'negocioRef': negocioRef,
         'claseRef': claseR,
         'negocioNombre': widget.negocio,
+        'employeeID': employeeID,
         'claseNombre': _actividadSeleccionada,
         'fecha': Timestamp.fromDate(dia),
         'hora': _horaSeleccionada,
