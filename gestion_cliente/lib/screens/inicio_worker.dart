@@ -91,13 +91,7 @@ void _listenReservas() {
               fit: BoxFit.contain,
             ),
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70),
-              onPressed: () => FirebaseAuth.instance.signOut(),
-            ),
-            const SizedBox(width: 10),
-          ],
+
         ),
 
         body: SingleChildScrollView(
