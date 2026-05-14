@@ -504,8 +504,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
           'timestamp': FieldValue.serverTimestamp(),
         });
       });
-    });
-    _mostrarMensaje('Reserva confirmada');
 
       // ========================================================
       // MENSAJE OK
@@ -546,7 +544,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
       }
     }
   }
-}
 
   // ============================================================
   // MENSAJES
