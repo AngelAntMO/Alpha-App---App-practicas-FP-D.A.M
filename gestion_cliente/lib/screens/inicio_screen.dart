@@ -1,11 +1,9 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gestion_cliente/screens/dashboard_page.dart';
-import 'package:gestion_cliente/screens/reserva_screen.dart';
 import 'package:gestion_cliente/screens/services_screen.dart';
 import 'package:gestion_cliente/screens/profile_page.dart';
 
@@ -16,7 +14,8 @@ class PaginaInicio extends StatefulWidget {
   State<PaginaInicio> createState() => _PaginaInicioState();
 }
 
-class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderStateMixin {
+class _PaginaInicioState extends State<PaginaInicio>
+    with SingleTickerProviderStateMixin {
   late AnimationController _logoController;
   late Animation<double> _logoAnim;
   bool _isLoadingDashboard = false;
@@ -29,9 +28,10 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
       duration: const Duration(seconds: 3),
     );
 
-    _logoAnim = Tween<double>(begin: 0.95, end: 1.05)
-        .chain(CurveTween(curve: Curves.easeInOut))
-        .animate(_logoController);
+    _logoAnim = Tween<double>(
+      begin: 0.95,
+      end: 1.05,
+    ).chain(CurveTween(curve: Curves.easeInOut)).animate(_logoController);
 
     _logoController.repeat(reverse: true);
   }
@@ -47,8 +47,10 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        DocumentSnapshot userDoc =
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
         if (userDoc.exists) {
           final data = userDoc.data() as Map<String, dynamic>;
@@ -57,7 +59,9 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
           if (mounted) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => DashboardPage(negocios: negocios)),
+              MaterialPageRoute(
+                builder: (context) => DashboardPage(negocios: negocios),
+              ),
             );
           }
         } else {
@@ -82,7 +86,7 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
 
     // Tamaños adaptativos
     double logoSize = screenWidth < 600 ? screenWidth * 0.6 : 300;
-    double iconSize = min(max(screenWidth * 0.06, 24), 35);
+    
 
     return Container(
       decoration: const BoxDecoration(
@@ -106,28 +110,6 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
               fit: BoxFit.contain,
             ),
           ),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.search, size: iconSize, color: Colors.white),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => const ReservaPage())),
-            ),
-            IconButton(
-              icon: Icon(Icons.info_outline, size: iconSize, color: Colors.white),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => const ServicePage())),
-            ),
-            IconButton(
-              icon: Icon(Icons.person, size: iconSize, color: Colors.white),
-              onPressed: () => Navigator.push(
-                  context, MaterialPageRoute(builder: (context) => const ProfilePage())),
-            ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70),
-              onPressed: () => FirebaseAuth.instance.signOut(),
-            ),
-            const SizedBox(width: 10),
-          ],
         ),
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -141,10 +123,8 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
                   children: [
                     AnimatedBuilder(
                       animation: _logoAnim,
-                      builder: (context, child) => Transform.scale(
-                        scale: _logoAnim.value,
-                        child: child,
-                      ),
+                      builder: (context, child) =>
+                          Transform.scale(scale: _logoAnim.value, child: child),
                       child: Image.asset(
                         'assets/images/LogoAlphaAppPagInicio.png',
                         width: logoSize,
@@ -186,39 +166,43 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
                       ),
                     ),
                     const SizedBox(height: 20),
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: screenWidth > 600 ? 4 : 2,
-                      mainAxisSpacing: 15,
-                      crossAxisSpacing: 15,
-                      childAspectRatio: 1.1, // Ajusta la proporción de las tarjetas
-                      children: [
-                        _buildQuickCard(
-                          Icons.calendar_month,
-                          "Mi Agenda",
-                          _irAlDashboard,
-                          isLoading: _isLoadingDashboard,
-                        ),
-                        _buildQuickCard(
-                          Icons.search,
-                          "Reservas",
-                          () => Navigator.push(context,
-                              MaterialPageRoute(builder: (context) => const ReservaPage())),
-                        ),
-                        _buildQuickCard(
-                          Icons.info_outline,
-                          "Servicios",
-                          () => Navigator.push(context,
-                              MaterialPageRoute(builder: (context) => const ServicePage())),
-                        ),
-                        _buildQuickCard(
-                          Icons.person_outline,
-                          "Mi Perfil",
-                          () => Navigator.push(context,
-                              MaterialPageRoute(builder: (context) => const ProfilePage())),
-                        ),
-                      ],
+                    Center(
+                      child: GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 15,
+                        crossAxisSpacing: 15,
+                        childAspectRatio: 1.1,
+                        children: [
+                          _buildQuickCard(
+                            Icons.calendar_month,
+                            "Mi Agenda",
+                            _irAlDashboard,
+                            isLoading: _isLoadingDashboard,
+                          ),
+                          _buildQuickCard(
+                            Icons.info_outline,
+                            "Servicios",
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ServicePage(),
+                              ),
+                            ),
+                          ),
+                          _buildQuickCard(
+                            Icons.person_outline,
+                            "Mi Perfil",
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfilePage(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -231,92 +215,104 @@ class _PaginaInicioState extends State<PaginaInicio> with SingleTickerProviderSt
     );
   }
 
- Widget _buildQuickCard(
-  IconData icon,
-  String title,
-  VoidCallback onTap, {
-  bool isLoading = false,
-}) {
-  bool isPressed = false;
+  Widget _buildQuickCard(
+    IconData icon,
+    String title,
+    VoidCallback onTap, {
+    bool isLoading = false,
+  }) {
+    bool isPressed = false;
+    bool isHovered = false;
 
-  return StatefulBuilder(
-    builder: (context, setState) {
-      return AnimatedScale(
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        scale: isPressed ? 0.96 : 1.0,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: isPressed ? 0.85 : 1.0,
-          child: GestureDetector(
-            onTapDown: (_) => setState(() => isPressed = true),
-            onTapUp: (_) {
-              setState(() => isPressed = false);
-              onTap();
-            },
-            onTapCancel: () => setState(() => isPressed = false),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  decoration: BoxDecoration(
-                    color: isPressed
-                        ? Colors.white.withValues(alpha: 0.18)
-                        : Colors.white.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: isPressed
-                          ? Colors.blueAccent.withValues(alpha: 0.5)
-                          : Colors.white.withValues(alpha: 0.2),
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return MouseRegion(
+  onEnter: (_) => setState(() => isHovered = true),
+  onExit: (_) => setState(() => isHovered = false),
+  child: AnimatedScale(
+    duration: const Duration(milliseconds: 180),
+    curve: Curves.easeOut,
+    scale: isPressed
+        ? 0.96
+        : (isHovered ? 1.04 : 1.0),
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 120),
+            opacity: isPressed ? 0.85 : 1.0,
+            child: GestureDetector(
+              onTapDown: (_) => setState(() => isPressed = true),
+              onTapUp: (_) {
+                setState(() => isPressed = false);
+                onTap();
+              },
+              onTapCancel: () => setState(() => isPressed = false),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    decoration: BoxDecoration(
+                     color: isPressed
+    ? Colors.white.withValues(alpha: 0.18)
+    : (isHovered
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.white.withValues(alpha: 0.10)),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: isPressed
+                            ? Colors.blueAccent.withValues(alpha: 0.5)
+                            : Colors.white.withValues(alpha: 0.2),
+                      ),
+                      boxShadow: isPressed
+                          ? [
+                              BoxShadow(
+                                color: Colors.blueAccent.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 15,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : [],
                     ),
-                    boxShadow: isPressed
-                        ? [
-                            BoxShadow(
-                              color: Colors.blueAccent.withValues(alpha: 0.25),
-                              blurRadius: 15,
-                              offset: const Offset(0, 4),
+                    child: SizedBox(
+                      height: double.infinity,
+                      width: double.infinity,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isLoading)
+                            const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
                             )
-                          ]
-                        : [],
-                  ),
-                  child: SizedBox(
-                    height: double.infinity,
-                    width: double.infinity,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (isLoading)
-                          const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          )
-                        else
-                          Icon(icon, size: 40, color: Colors.blueAccent),
-                        const SizedBox(height: 10),
-                        Text(
-                          title,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                          else
+                            Icon(icon, size: 40, color: Colors.blueAccent),
+                          const SizedBox(height: 10),
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
+                ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 }
-}
+
 class AnimatedAppBarButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -363,15 +359,11 @@ class _AnimatedAppBarButtonState extends State<AnimatedAppBarButton> {
                       color: Colors.blueAccent.withValues(alpha: 0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ]
                 : [],
           ),
-          child: Icon(
-            widget.icon,
-            size: widget.size,
-            color: Colors.white,
-          ),
+          child: Icon(widget.icon, size: widget.size, color: Colors.white),
         ),
       ),
     );

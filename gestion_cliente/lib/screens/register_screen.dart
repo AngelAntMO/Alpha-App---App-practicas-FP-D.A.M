@@ -27,9 +27,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Map<String, bool> negocios = {
     "Gimnasio": false,
-    "Centro de Yoga": false,
+    "Yoga": false,
     "Peluqueria": false,
-    "Centro de Fisioterapia": false,
+    "Fisioterapia": false,
     "Academia": false,
   };
 
