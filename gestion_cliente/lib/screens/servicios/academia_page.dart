@@ -745,6 +745,10 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
                         focusedDay: _focusedDay,
 
+                        enabledDayPredicate: (day) {
+                          return day.weekday != DateTime.sunday;
+                        },
+
                         selectedDayPredicate: (day) =>
                             isSameDay(
                           _selectedDay,
