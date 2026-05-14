@@ -44,11 +44,7 @@ class AcademiaPage extends StatefulWidget {
   final String userId;
   final String negocio;
 
-  const AcademiaPage({
-    super.key,
-    required this.userId,
-    required this.negocio,
-  });
+  const AcademiaPage({super.key, required this.userId, required this.negocio});
 
   @override
   State<AcademiaPage> createState() => _AcademiaPageState();
@@ -91,12 +87,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
   // HORARIOS FIJOS
   // ============================================================
 
-  final List<String> horariosTotales = [
-    '16:00',
-    '17:00',
-    '18:00',
-    '19:00',
-  ];
+  final List<String> horariosTotales = ['16:00', '17:00', '18:00', '19:00'];
 
   // ============================================================
   // REFERENCIA NEGOCIO
@@ -162,9 +153,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
           .get();
 
       for (var doc in snapshot.docs) {
-        await doc.reference.update({
-          'estado': _kEstadoFinalizada,
-        });
+        await doc.reference.update({'estado': _kEstadoFinalizada});
       }
     } catch (e) {
       debugPrint('Error actualizando reservas: $e');
@@ -185,14 +174,8 @@ class _AcademiaPageState extends State<AcademiaPage> {
           .collection(_kColeccionReservas)
           .where('negocioRef', isEqualTo: negocioRef)
           .where('estado', isEqualTo: _kEstadoActiva)
-          .where(
-            'fecha',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(inicio),
-          )
-          .where(
-            'fecha',
-            isLessThanOrEqualTo: Timestamp.fromDate(fin),
-          )
+          .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(inicio))
+          .where('fecha', isLessThanOrEqualTo: Timestamp.fromDate(fin))
           .get();
 
       final Map<DateTime, String> estados = {};
@@ -200,14 +183,10 @@ class _AcademiaPageState extends State<AcademiaPage> {
       for (var doc in snapshot.docs) {
         final fecha = (doc['fecha'] as Timestamp).toDate();
 
-        final dia = DateTime(
-          fecha.year,
-          fecha.month,
-          fecha.day,
-        );
+        final dia = DateTime(fecha.year, fecha.month, fecha.day);
 
-        final userId = doc['userId']; 
-        
+        final userId = doc['userId'];
+
         // Si el usuario tiene reserva → verde
         if (userId == widget.userId) {
           estados[dia] = 'verde';
@@ -270,10 +249,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
       final snapshot = await _db
           .collection(_kColeccionReservas)
           .where('negocioRef', isEqualTo: negocioRef)
-          .where(
-            'fecha',
-            isEqualTo: Timestamp.fromDate(fechaBusqueda),
-          )
+          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBusqueda))
           .where('estado', isEqualTo: _kEstadoActiva)
           .get();
 
@@ -302,8 +278,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
         // ======================================================
 
         final usuarioYaReservoHora = snapshot.docs.any((doc) {
-          return doc['userId'] == widget.userId &&
-              doc['hora'] == hora;
+          return doc['userId'] == widget.userId && doc['hora'] == hora;
         });
 
         final total = reservasClaseHora.length;
@@ -332,9 +307,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
         setState(() {
           _horasDisponibles = horas;
 
-          if (!_horasDisponibles.any(
-            (h) => h['hora'] == _horaSeleccionada,
-          )) {
+          if (!_horasDisponibles.any((h) => h['hora'] == _horaSeleccionada)) {
             _horaSeleccionada = '';
           }
 
@@ -394,11 +367,8 @@ class _AcademiaPageState extends State<AcademiaPage> {
       // VALIDAR PROFESOR ASIGNADO
       // ========================================================
 
-      if (employeeID == null ||
-          employeeID.toString().trim().isEmpty) {
-        throw Exception(
-          'Esta clase todavía no tiene profesor asignado',
-        );
+      if (employeeID == null || employeeID.toString().trim().isEmpty) {
+        throw Exception('Esta clase todavía no tiene profesor asignado');
       }
 
       // ========================================================
@@ -426,8 +396,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
       // ========================================================
 
       await _db.runTransaction((transaction) async {
-        final reservasRef =
-            _db.collection(_kColeccionReservas);
+        final reservasRef = _db.collection(_kColeccionReservas);
 
         // ======================================================
         // CONTAR RESERVAS ACTIVAS DEL USUARIO
@@ -440,10 +409,9 @@ class _AcademiaPageState extends State<AcademiaPage> {
             .where('estado', isEqualTo: _kEstadoActiva)
             .get();
 
-            if (userReservas.docs.length >= _kMaxReservasAcademia) {
-              throw ('Ya tienes $_kMaxReservasAcademia reservas en Academia, no puedes reservar más.');
-            }
-
+        if (userReservas.docs.length >= _kMaxReservasAcademia) {
+          throw ('Ya tienes $_kMaxReservasAcademia reservas en Academia, no puedes reservar más.');
+        }
 
         // ======================================================
         // RESERVAS DEL DÍA
@@ -451,10 +419,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
         final reservasDia = await reservasRef
             .where('negocioRef', isEqualTo: negocioRef)
-            .where(
-              'fecha',
-              isEqualTo: Timestamp.fromDate(fechaBase),
-            )
+            .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
             .where('estado', isEqualTo: _kEstadoActiva)
             .get();
 
@@ -468,53 +433,41 @@ class _AcademiaPageState extends State<AcademiaPage> {
         });
 
         if (yaTieneHora) {
-          throw Exception(
-            'Ya tienes una reserva a esa hora',
-          );
+          throw Exception('Ya tienes una reserva a esa hora');
         }
 
         // ======================================================
         // CONTAR PERSONAS EN ESA CLASE + HORA
         // ======================================================
 
-        final reservasClaseHora =
-            reservasDia.docs.where((doc) {
-          return doc['claseNombre'] ==
-                  _claseSeleccionada &&
+        final reservasClaseHora = reservasDia.docs.where((doc) {
+          return doc['claseNombre'] == _claseSeleccionada &&
               doc['hora'] == _horaSeleccionada;
         }).toList();
 
-        if (reservasClaseHora.length >=
-            _kMaxPorClaseHora) {
-          throw Exception(
-            'La clase está completa',
-          );
+        if (reservasClaseHora.length >= _kMaxPorClaseHora) {
+          throw Exception('La clase está completa');
         }
 
         // ======================================================
         // CREAR RESERVA
         // ======================================================
 
-        final nuevaReserva =
-            reservasRef.doc();
+        final nuevaReserva = reservasRef.doc();
 
         transaction.set(nuevaReserva, {
           // ====================================================
           // USUARIO
           // ====================================================
-
           'userId': widget.userId,
 
-          'cliente':
-              user?.displayName?.isNotEmpty == true
-                  ? user!.displayName
-                  : user?.email ??
-                      'Usuario desconocido',
+          'cliente': user?.displayName?.isNotEmpty == true
+              ? user!.displayName
+              : user?.email ?? 'Usuario desconocido',
 
           // ====================================================
           // NEGOCIO
           // ====================================================
-
           'negocioNombre': widget.negocio,
 
           'negocioRef': negocioRef,
@@ -522,43 +475,33 @@ class _AcademiaPageState extends State<AcademiaPage> {
           // ====================================================
           // CLASE
           // ====================================================
-
           'claseNombre': _claseSeleccionada,
 
-          'claseRef': _db
-              .collection(_kColeccionClases)
-              .doc(_claseSeleccionada),
+          'claseRef': _db.collection(_kColeccionClases).doc(_claseSeleccionada),
 
           // ====================================================
           // EMPLEADO
           // ====================================================
-
           'employeeID': employeeID,
 
           // ====================================================
           // FECHAS
           // ====================================================
+          'fecha': Timestamp.fromDate(fechaBase),
 
-          'fecha':
-              Timestamp.fromDate(fechaBase),
-
-          'fechaHora':
-              Timestamp.fromDate(fechaHora),
+          'fechaHora': Timestamp.fromDate(fechaHora),
 
           'hora': _horaSeleccionada,
 
           // ====================================================
           // ESTADO
           // ====================================================
-
           'estado': _kEstadoActiva,
 
           // ====================================================
           // TIMESTAMP CREACIÓN
           // ====================================================
-
-          'timestamp':
-              FieldValue.serverTimestamp(),
+          'timestamp': FieldValue.serverTimestamp(),
         });
       });
 
@@ -585,8 +528,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
           _horaSeleccionada = '';
         });
       }
-        } catch (e) {
-      
+    } catch (e) {
       String errorTexto = e.toString();
 
       errorTexto = errorTexto.replaceFirst('Exception: ', '');
@@ -596,7 +538,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
       errorTexto = errorTexto.trim();
 
       _mostrarMensaje(errorTexto);
-      
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -610,10 +551,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
   void _mostrarMensaje(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -623,8 +561,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth =
-        MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -632,7 +569,6 @@ class _AcademiaPageState extends State<AcademiaPage> {
       // ========================================================
       // APPBAR
       // ========================================================
-
       appBar: AppBar(
         title: Text(
           widget.negocio,
@@ -645,17 +581,12 @@ class _AcademiaPageState extends State<AcademiaPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme:
-            const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
 
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFF1E293B),
-                Color(0xFF334155),
-                Color(0xFF64B5F6),
-              ],
+              colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -666,18 +597,13 @@ class _AcademiaPageState extends State<AcademiaPage> {
       // ========================================================
       // BODY
       // ========================================================
-
       body: Container(
         width: double.infinity,
         height: double.infinity,
 
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFF5F5F5),
-              Color(0xFFFFB74D),
-              Color(0xFFF57C00),
-            ],
+            colors: [Color(0xFFF5F5F5), Color(0xFFFFB74D), Color(0xFFF57C00)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -689,15 +615,13 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
             child: Center(
               child: Container(
-                constraints:
-                    const BoxConstraints(maxWidth: 450),
+                constraints: const BoxConstraints(maxWidth: 450),
 
                 child: Column(
                   children: [
                     // ====================================================
                     // LOGO
                     // ====================================================
-
                     Image.asset(
                       'assets/images/LogoAlphaAppAcademia.png',
                       width: screenWidth * 0.9,
@@ -710,21 +634,15 @@ class _AcademiaPageState extends State<AcademiaPage> {
                     // ====================================================
                     // CALENDARIO
                     // ====================================================
-
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(
-                          alpha: 0.7,
-                        ),
+                        color: Colors.white.withValues(alpha: 0.7),
 
-                        borderRadius:
-                            BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(25),
 
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: 0.08,
-                            ),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -734,13 +652,36 @@ class _AcademiaPageState extends State<AcademiaPage> {
                       child: TableCalendar(
                         locale: 'es_ES',
 
-                        startingDayOfWeek:
-                            StartingDayOfWeek.monday,
+                        startingDayOfWeek: StartingDayOfWeek.monday,
 
                         firstDay: DateTime.now(),
 
-                        lastDay: DateTime.now().add(
-                          const Duration(days: 365),
+                        lastDay: DateTime.now().add(const Duration(days: 365)),
+                        calendarStyle: CalendarStyle(
+                          todayDecoration: BoxDecoration(
+                            color: Color(0xFFFFA726),
+                            shape: BoxShape.circle,
+                          ),
+
+                          todayTextStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        daysOfWeekStyle: const DaysOfWeekStyle(
+                          weekdayStyle: TextStyle(
+                            color: Color(
+                              0xFFF57C00,
+                            ), // color naranja para días de semana
+                            fontWeight: FontWeight.w600,
+                          ),
+
+                          weekendStyle: TextStyle(
+                            color: Color(
+                              0xFFF57C00,
+                            ), // sábado igual que los días de semana
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
 
                         focusedDay: _focusedDay,
@@ -750,59 +691,42 @@ class _AcademiaPageState extends State<AcademiaPage> {
                         },
 
                         selectedDayPredicate: (day) =>
-                            isSameDay(
-                          _selectedDay,
-                          day,
-                        ),
+                            isSameDay(_selectedDay, day),
 
                         onPageChanged: (focusedDay) {
                           _focusedDay = focusedDay;
                           _cargarEstadoDias();
                         },
 
-                        onDaySelected:
-                            (selectedDay, focusedDay) {
+                        onDaySelected: (selectedDay, focusedDay) {
                           setState(() {
-                            _selectedDay =
-                                selectedDay;
+                            _selectedDay = selectedDay;
 
-                            _focusedDay =
-                                focusedDay;
+                            _focusedDay = focusedDay;
                           });
 
                           _actualizarHorasDisponibles();
                         },
 
-                        headerStyle:
-                            const HeaderStyle(
+                        headerStyle: const HeaderStyle(
                           formatButtonVisible: false,
                           titleCentered: true,
                         ),
 
-                        calendarBuilders:
-                            CalendarBuilders(
-                          markerBuilder:
-                              (context, date, events) {
-                            final estado =
-                                _estadoDias.entries
-                                    .where((e) =>
-                                        isSameDay(
-                                          e.key,
-                                          date,
-                                        ))
-                                    .map((e) =>
-                                        e.value)
-                                    .firstOrNull;
+                        calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, date, events) {
+                            final estado = _estadoDias.entries
+                                .where((e) => isSameDay(e.key, date))
+                                .map((e) => e.value)
+                                .firstOrNull;
 
                             if (estado == null) {
                               return null;
                             }
 
-                            Color color =
-                                Colors.orange;
+                            Color color = Colors.orange;
 
-                            if (estado ==
-                                'verde') {
+                            if (estado == 'verde') {
                               color = Colors.green;
                             }
 
@@ -811,11 +735,9 @@ class _AcademiaPageState extends State<AcademiaPage> {
                               child: Container(
                                 width: 7,
                                 height: 7,
-                                decoration:
-                                    BoxDecoration(
+                                decoration: BoxDecoration(
                                   color: color,
-                                  shape:
-                                      BoxShape.circle,
+                                  shape: BoxShape.circle,
                                 ),
                               ),
                             );
@@ -829,44 +751,38 @@ class _AcademiaPageState extends State<AcademiaPage> {
                     // ====================================================
                     // DROPDOWN CLASES
                     // ====================================================
-
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
                       ),
 
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(
-                          alpha: 0.6,
-                        ),
+                        color: Colors.white.withValues(alpha: 0.6),
 
-                        borderRadius:
-                            BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20),
                       ),
 
-                      child:
-                          DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(
                         isExpanded: true,
 
-                      initialValue: _claseSeleccionada.isEmpty
-                          ? null
-                          : _claseSeleccionada,
+                        initialValue: _claseSeleccionada.isEmpty
+                            ? null
+                            : _claseSeleccionada,
 
-                        decoration:
-                            const InputDecoration(
+                        decoration: const InputDecoration(
                           border: InputBorder.none,
-                          labelText:
-                              'Selecciona Clase',
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          labelText: 'Selecciona Clase',
                         ),
 
                         items: _clases.map((clase) {
                           return DropdownMenuItem(
                             value: clase,
-                            child: Center(
-                              child: Text(clase),
-                            ),
+                            child: Center(child: Text(clase)),
                           );
                         }).toList(),
 
@@ -885,52 +801,43 @@ class _AcademiaPageState extends State<AcademiaPage> {
                     // ====================================================
                     // DROPDOWN HORAS
                     // ====================================================
-
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
                       ),
 
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(
-                          alpha: 0.6,
-                        ),
+                        color: Colors.white.withValues(alpha: 0.6),
 
-                        borderRadius:
-                            BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20),
                       ),
 
-                      child:
-                          DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<String>(
                         isExpanded: true,
 
                         initialValue: _horaSeleccionada.isEmpty
-                          ? null
-                          : _horaSeleccionada,
+                            ? null
+                            : _horaSeleccionada,
 
-                        decoration:
-                            const InputDecoration(
+                        decoration: const InputDecoration(
                           border: InputBorder.none,
-                          labelText:
-                              'Selecciona Hora',
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          labelText: 'Selecciona Hora',
                         ),
 
                         items: _horasDisponibles.map((h) {
                           return DropdownMenuItem<String>(
                             value: h['hora'] as String,
                             enabled: !(h['llena'] as bool),
-                            child: Center(
-                              child: Text(
-                                h['texto'] as String,
-                              ),
-                            ),
+                            child: Center(child: Text(h['texto'] as String)),
                           );
                         }).toList(),
 
-                        onChanged:
-                            (value) {
+                        onChanged: (value) {
                           setState(() {
                             _horaSeleccionada = value!;
                           });
@@ -943,28 +850,22 @@ class _AcademiaPageState extends State<AcademiaPage> {
                     // ====================================================
                     // BOTÓN RESERVAR
                     // ====================================================
-
                     SizedBox(
                       width: screenWidth * 0.7,
                       height: 55,
 
                       child: ElevatedButton(
-                        onPressed:
-                            _loading ? null : _reservar,
+                        onPressed: _loading ? null : _reservar,
 
-                        style:
-                            ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Colors.transparent,
-                          shadowColor:
-                              Colors.transparent,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
                           padding: EdgeInsets.zero,
                         ),
 
                         child: Ink(
                           decoration: BoxDecoration(
-                            gradient:
-                                const LinearGradient(
+                            gradient: const LinearGradient(
                               colors: [
                                 Color(0xFF1E293B),
                                 Color(0xFF334155),
@@ -972,10 +873,7 @@ class _AcademiaPageState extends State<AcademiaPage> {
                               ],
                             ),
 
-                            borderRadius:
-                                BorderRadius.circular(
-                              30,
-                            ),
+                            borderRadius: BorderRadius.circular(30),
                           ),
 
                           child: Container(
@@ -983,16 +881,13 @@ class _AcademiaPageState extends State<AcademiaPage> {
 
                             child: _loading
                                 ? const CircularProgressIndicator(
-                                    color:
-                                        Colors.white,
+                                    color: Colors.white,
                                   )
                                 : const Text(
                                     'RESERVAR',
                                     style: TextStyle(
-                                      color:
-                                          Colors.white,
-                                      fontWeight:
-                                          FontWeight.bold,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                           ),
