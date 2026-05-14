@@ -192,7 +192,7 @@ class WorkerProfilePage extends StatelessWidget {
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('workers')
+          .collection('users')
           .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
@@ -204,8 +204,7 @@ class WorkerProfilePage extends StatelessWidget {
 
         final nombre = data['nombre'] ?? "";
         final apellidos = data['apellidos'] ?? "";
-        final puesto = data['puesto'] ?? "Trabajador";
-        final empresa = data['empresa'] ?? "";
+    
         final avatar = data['avatar'];
 
         String iniciales = "W";
@@ -260,16 +259,7 @@ class WorkerProfilePage extends StatelessWidget {
 
             const SizedBox(height: 5),
 
-            Text(
-              puesto,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-
-            const SizedBox(height: 5),
-
-            Text(empresa, style: const TextStyle(color: Colors.white38)),
-
-            const SizedBox(height: 15),
+          
 
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -327,7 +317,7 @@ class WorkerProfilePage extends StatelessWidget {
               return GestureDetector(
                 onTap: () async {
                   await FirebaseFirestore.instance
-                      .collection('workers')
+                      .collection('users')
                       .doc(uid)
                       .set({'avatar': avatar}, SetOptions(merge: true));
 
@@ -346,7 +336,7 @@ class WorkerProfilePage extends StatelessWidget {
 
   void _showEditWorkerProfile(BuildContext context, String uid) async {
     final doc = await FirebaseFirestore.instance
-        .collection('workers')
+        .collection('users')
         .doc(uid)
         .get();
 
@@ -397,7 +387,7 @@ class WorkerProfilePage extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () async {
                     await FirebaseFirestore.instance
-                        .collection('workers')
+                        .collection('users')
                         .doc(uid)
                         .set({
                           'nombre': nameController.text.trim(),
@@ -484,7 +474,7 @@ class WorkerProfilePage extends StatelessWidget {
           ),
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('workers')
+                .collection('users')
                 .doc(uid)
                 .collection('fichajes')
                 .orderBy('fecha', descending: true)
