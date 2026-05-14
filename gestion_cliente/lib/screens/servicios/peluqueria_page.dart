@@ -134,26 +134,32 @@ class _PeluqueriaPageState extends State<PeluqueriaPage> {
       _selectedDay!.day,
     );
 
-    final check = await _db
+     final misReservas = await _db
         .collection(_kColeccion)
-        .where(_kCampoNegocioRef, isEqualTo: negocioRef)
-        .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fecha))
-        .where(_kCampoClase, isEqualTo: _actividadSeleccionada)
-        .where(_kCampoHora, isEqualTo: _horaSeleccionada)
+        .where(_kCampoUserId, isEqualTo: widget.userId)
+        .where('negocioRef', isEqualTo: negocioRef)
         .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
         .get();
 
-    if (check.docs.any((d) => d[_kCampoUserId] == widget.userId)) {
-      _msg("Ya tienes reserva");
-      setState(() => _loading = false);
-      return;
+      if (misReservas.docs.length >= _kMaxReservas) {
+        throw Exception('Máximo $_kMaxReservas reservas activas');
+      }
+
+       final claseDoc = await FirebaseFirestore.instance
+        .collection('clases')
+        .doc(_actividadSeleccionada)
+        .get();
+
+    if (!claseDoc.exists) {
+      throw Exception('La clase no existe');
     }
 
-    if (check.docs.length >= _kMaxReservas) {
-      _msg("Cupo lleno");
-      setState(() => _loading = false);
-      return;
+    final employeeID = claseDoc.data()?['employeeID'];
+
+    if (employeeID == null || employeeID.toString().isEmpty) {
+      throw Exception('La clase no tiene employeeID asignado');
     }
+
 await _db.collection(_kColeccion).add({
   _kCampoUserId: widget.userId,
   _kCampoNegocioRef: negocioRef,
@@ -164,6 +170,8 @@ await _db.collection(_kColeccion).add({
   'claseRef': FirebaseFirestore.instance
       .collection('clases')
       .doc(_actividadSeleccionada),
+
+    'employeeID': employeeID,
 
   _kCampoFecha: Timestamp.fromDate(fecha),
   _kCampoHora: _horaSeleccionada,

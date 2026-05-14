@@ -191,4 +191,7 @@ class NotificationsService {
   static Future<void> cancelAll() async {
     await _plugin.cancelAll();
   }
+
+ 
+
 }

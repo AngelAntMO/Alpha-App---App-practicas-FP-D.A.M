@@ -193,6 +193,22 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         throw Exception('Máximo $_kMaxReservas reservas activas');
       }
 
+       final claseDoc = await FirebaseFirestore.instance
+        .collection('clases')
+        .doc(_especialistaSeleccionado)
+        .get();
+
+    if (!claseDoc.exists) {
+      throw Exception('La clase no existe');
+    }
+
+    final employeeID = claseDoc.data()?['employeeID'];
+
+    if (employeeID == null || employeeID.toString().isEmpty) {
+      throw Exception('La clase no tiene employeeID asignado');
+    }
+
+
       final check = await _db
           .collection(_kColeccion)
           .where('negocioRef', isEqualTo: negocioRef)
@@ -218,6 +234,7 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         'fecha': Timestamp.fromDate(diaReserva),
         'hora': horaReserva,
         'fechaHora': Timestamp.fromDate(fechaCompleta),
+        'employeeID': employeeID,
         'estado': _kEstadoActiva,
         'timestamp': FieldValue.serverTimestamp(),
       });
