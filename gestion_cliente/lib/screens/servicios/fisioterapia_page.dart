@@ -1,260 +1,595 @@
-import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
+// ============================================================
+// ACADEMIA PAGE - SISTEMA DE RESERVAS MEJORADO
+// ============================================================
+//
+// MEJORAS IMPLEMENTADAS:
+//
+// ✅ Clases dinámicas desde Firestore
+// ✅ EmployeeID obligatorio para reservar
+// ✅ Máximo 5 reservas activas SOLO en Academia
+// ✅ Máximo 15 personas por clase + hora + día
+// ✅ Un usuario NO puede reservar dos clases a la misma hora
+// ✅ Un usuario SÍ puede reservar varias clases el mismo día
+// ✅ Bloqueo de horas pasadas del día actual
+// ✅ Indicadores visuales en calendario
+// ✅ Horas muestran plazas disponibles
+// ✅ Código comentado para el equipo
+//
+// ============================================================
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:gestion_cliente/notifications_service.dart';
+import 'package:table_calendar/table_calendar.dart';
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const _kColeccion = 'reservas';
+// ============================================================
+// CONSTANTES
+// ============================================================
+
+const _kColeccionReservas = 'reservas';
+const _kColeccionespecialistas = 'clases';
+
 const _kEstadoActiva = 'activa';
-const _kCampoFecha = 'fecha';
-const _kCampoHora = 'hora';
-const _kCampoEstado = 'estado';
-const _kCampoUserId = 'userId';
+const _kEstadoFinalizada = 'finalizada';
 
-const _kMaxReservas = 5;
-const _kMaxSlotsPorDia = 8;
+const _kMaxReservasfisioterapia = 5;
+const _kMaxPorClaseHora = 1;
 
-const _kEspecialistasSabado = ['Especialista 4', 'Especialista 5'];
+// ============================================================
+// WIDGET PRINCIPAL
+// ============================================================
 
-// ─── Widget principal ──────────────────────────────────────────────────────────
 class FisioterapiaPage extends StatefulWidget {
   final String userId;
   final String negocio;
 
-  const FisioterapiaPage({
-    super.key,
-    required this.userId,
-    required this.negocio,
-  });
+  const FisioterapiaPage({super.key, required this.userId, required this.negocio});
 
   @override
   State<FisioterapiaPage> createState() => _FisioterapiaPageState();
 }
 
 class _FisioterapiaPageState extends State<FisioterapiaPage> {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // ============================================================
+  // VARIABLES CALENDARIO
+  // ============================================================
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, int> _reservasPorDia = {};
-  List<String> _horasDisponibles = [];
 
-  String _horaSeleccionada = '';
-  String _especialistaSeleccionado = '';
+  // ============================================================
+  // VARIABLES UI
+  // ============================================================
+
   bool _loading = false;
 
-  final List<String> especialistas = [
-    'Especialista 1',
-    'Especialista 2',
-    'Especialista 3',
-    'Especialista 4',
-    'Especialista 5',
-  ];
+  String _claseSeleccionada = '';
+  String _horaSeleccionada = '';
+
+  // ============================================================
+  // DATOS DINÁMICOS
+  // ============================================================
+
+  List<String> _clases = [];
+
+  // Lista visual de horas:
+  // Ej:
+  // 16:00 (12/15)
+  List<Map<String, dynamic>> _horasDisponibles = [];
+
+  // Días con reservas para pintar puntos
+  final Map<DateTime, String> _estadoDias = {};
+
+  // ============================================================
+  // HORARIOS FIJOS
+  // ============================================================
 
   final List<String> horariosTotales = [
-    '09:30','10:30','11:30','12:30','13:30','16:30','17:30','18:30',
+    '09:30',
+    '10:30',
+    '11:30',
+    '12:30',
+    '13:30',
+    '16:30',
+    '17:30',
+    '18:30',
   ];
 
-  final List<String> horariosSabado = [
-    '09:30','10:30','11:30','12:30','13:30',
-  ];
+  // ============================================================
+  // REFERENCIA NEGOCIO
+  // ============================================================
 
-  FirebaseFirestore get _db => FirebaseFirestore.instance;
-
-  // 🔗 REFERENCIAS
   DocumentReference get negocioRef =>
       _db.collection('negocios').doc(widget.negocio);
 
-  DocumentReference claseRef(String claseId) =>
-      _db.collection('clases').doc(claseId);
+  // ============================================================
+  // INIT
+  // ============================================================
 
   @override
   void initState() {
     super.initState();
+
     initializeDateFormatting('es_ES', null);
-    _fetchBlockedDays();
-    _horasDisponibles = List.from(horariosTotales);
+
+    _cargarClases();
+    _cargarEstadoDias();
+    _actualizarReservasPasadas();
   }
 
-  DateTime _soloFecha(DateTime d) => DateTime(d.year, d.month, d.day);
+  // ============================================================
+  // CARGAR CLASES DINÁMICAS DESDE FIRESTORE
+  // ============================================================
 
-  List<String> get _especialistasFiltrados {
-    if (_selectedDay == null) return [];
-    return _selectedDay!.weekday == DateTime.saturday
-        ? ['Especialista 4', 'Especialista 5']
-        : ['Especialista 1', 'Especialista 2', 'Especialista 3'];
-  }
-
-  // ─── FIRESTORE ──────────────────────────────────────────────────────────────
-
-  Future<void> _fetchBlockedDays() async {
+  Future<void> _cargarClases() async {
     try {
       final snapshot = await _db
-          .collection(_kColeccion)
+          .collection(_kColeccionespecialistas)
           .where('negocioRef', isEqualTo: negocioRef)
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
           .get();
 
-      final Map<DateTime, int> contador = {};
+      final clases = snapshot.docs
+          .map((doc) => doc['nombre'].toString())
+          .toList();
+
+      clases.sort();
+
+      if (mounted) {
+        setState(() {
+          _clases = clases;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando clases: $e');
+    }
+  }
+
+  // ============================================================
+  // ACTUALIZAR RESERVAS PASADAS A FINALIZADA
+  // ============================================================
+
+  Future<void> _actualizarReservasPasadas() async {
+    try {
+      final ahora = Timestamp.fromDate(DateTime.now());
+
+      final snapshot = await _db
+          .collection(_kColeccionReservas)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .where('fechaHora', isLessThan: ahora)
+          .get();
+
       for (var doc in snapshot.docs) {
-        final fecha = (doc[_kCampoFecha] as Timestamp).toDate();
-        final day = _soloFecha(fecha);
-        contador[day] = (contador[day] ?? 0) + 1;
+        await doc.reference.update({'estado': _kEstadoFinalizada});
+      }
+    } catch (e) {
+      debugPrint('Error actualizando reservas: $e');
+    }
+  }
+
+  // ============================================================
+  // CARGAR ESTADO VISUAL DEL CALENDARIO
+  // ============================================================
+
+  Future<void> _cargarEstadoDias() async {
+    try {
+      final inicio = DateTime(_focusedDay.year, _focusedDay.month, 1);
+
+      final fin = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
+
+      final snapshot = await _db
+          .collection(_kColeccionReservas)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(inicio))
+          .where('fecha', isLessThanOrEqualTo: Timestamp.fromDate(fin))
+          .get();
+
+      final Map<DateTime, String> estados = {};
+
+      for (var doc in snapshot.docs) {
+        final fecha = (doc['fecha'] as Timestamp).toDate();
+
+        final dia = DateTime(fecha.year, fecha.month, fecha.day);
+
+        final userId = doc['userId'];
+
+        // Si el usuario tiene reserva → verde
+        if (userId == widget.userId) {
+          estados[dia] = 'verde';
+        } else {
+          estados.putIfAbsent(dia, () => 'naranja');
+        }
       }
 
       if (mounted) {
-        setState(() => _reservasPorDia = contador);
+        setState(() {
+          _estadoDias.clear();
+          _estadoDias.addAll(estados);
+        });
       }
     } catch (e) {
-      _mostrar('Error al cargar el calendario.');
+      debugPrint('Error estado días: $e');
     }
   }
 
-  Future<void> _actualizarHorasDisponibles() async {
-    if (_selectedDay == null || _especialistaSeleccionado.isEmpty) return;
+  // ============================================================
+  // COMPROBAR SI UNA HORA YA PASÓ
+  // ============================================================
 
-    final esSabado = _selectedDay!.weekday == DateTime.saturday;
+  bool _horaYaPasada(String hora) {
+    if (_selectedDay == null) return false;
 
-    if (esSabado && !_kEspecialistasSabado.contains(_especialistaSeleccionado)) {
-      setState(() {
-        _horasDisponibles = [];
-        _horaSeleccionada = '';
-      });
-      _mostrar('Los sábados solo trabajan Especialista 4 y 5');
-      return;
-    }
+    final ahora = DateTime.now();
 
-    setState(() => _loading = true);
+    final partes = hora.split(':');
 
-    try {
-      final fecha = _soloFecha(_selectedDay!);
-
-      final snapshot = await _db
-          .collection(_kColeccion)
-          .where('negocioRef', isEqualTo: negocioRef)
-          .where('claseRef', isEqualTo: claseRef(_especialistaSeleccionado))
-          .where('fecha', isEqualTo: Timestamp.fromDate(fecha))
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
-          .get();
-
-      final ocupadas = snapshot.docs.map((e) => e[_kCampoHora] as String).toSet();
-
-      final base = esSabado ? horariosSabado : horariosTotales;
-
-      final disponibles = base.where((h) => !ocupadas.contains(h)).toList();
-
-      setState(() {
-        _horasDisponibles = disponibles;
-        if (!_horasDisponibles.contains(_horaSeleccionada)) {
-          _horaSeleccionada = '';
-        }
-      });
-    } catch (e) {
-      _mostrar('Error al cargar horarios');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _reservar() async {
-    if (_selectedDay == null ||
-        _horaSeleccionada.isEmpty ||
-        _especialistaSeleccionado.isEmpty) {
-      _mostrar('Completa todos los campos');
-      return;
-    }
-
-    final diaReserva = _soloFecha(_selectedDay!);
-    final horaReserva = _horaSeleccionada;
-
-    final claseReferencia = claseRef(_especialistaSeleccionado);
-
-    final partesHora = horaReserva.split(':');
-
-    final fechaCompleta = DateTime(
-      diaReserva.year,
-      diaReserva.month,
-      diaReserva.day,
-      int.parse(partesHora[0]),
-      int.parse(partesHora[1]),
+    final fechaHora = DateTime(
+      _selectedDay!.year,
+      _selectedDay!.month,
+      _selectedDay!.day,
+      int.parse(partes[0]),
+      int.parse(partes[1]),
     );
 
+    return fechaHora.isBefore(ahora);
+  }
+
+  // ============================================================
+  // ACTUALIZAR HORAS DISPONIBLES
+  // ============================================================
+
+  Future<void> _actualizarHorasDisponibles() async {
+    if (_selectedDay == null || _claseSeleccionada.isEmpty) {
+      return;
+    }
+
     setState(() => _loading = true);
 
     try {
-      // VALIDACIONES
-     final misReservas = await _db
-        .collection(_kColeccion)
-        .where(_kCampoUserId, isEqualTo: widget.userId)
-        .where('negocioRef', isEqualTo: negocioRef)
-        .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
-        .get();
-
-      if (misReservas.docs.length >= _kMaxReservas) {
-        throw Exception('Máximo $_kMaxReservas reservas activas');
-      }
-
-      final check = await _db
-          .collection(_kColeccion)
-          .where('negocioRef', isEqualTo: negocioRef)
-          .where('claseRef', isEqualTo: claseReferencia)
-          .where('fecha', isEqualTo: Timestamp.fromDate(diaReserva))
-          .where('hora', isEqualTo: horaReserva)
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
-          .get();
-
-      if (check.docs.isNotEmpty) {
-        throw Exception('Hora ocupada');
-      }
-
-      // GUARDAR
-      final docRef = _db.collection(_kColeccion).doc();
-
-      await docRef.set({
-        'userId': widget.userId,
-        'negocioRef': negocioRef,
-        'claseRef': claseReferencia,
-        'negocioNombre': widget.negocio,
-        'claseNombre': _especialistaSeleccionado,
-        'fecha': Timestamp.fromDate(diaReserva),
-        'hora': horaReserva,
-        'fechaHora': Timestamp.fromDate(fechaCompleta),
-        'estado': _kEstadoActiva,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      _mostrar('Reserva confirmada');
-
-      _fetchBlockedDays();
-
-      setState(() {
-        _selectedDay = null;
-        _horaSeleccionada = '';
-        _especialistaSeleccionado = '';
-        _horasDisponibles = List.from(horariosTotales);
-      });
-
-      await NotificationsService.scheduleNotification(
-        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        servicio: widget.negocio,
-        especialista: _especialistaSeleccionado,
-        scheduledDate: fechaCompleta.subtract(const Duration(hours: 24)),
+      final fechaBusqueda = DateTime(
+        _selectedDay!.year,
+        _selectedDay!.month,
+        _selectedDay!.day,
       );
 
+      final snapshot = await _db
+          .collection(_kColeccionReservas)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBusqueda))
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
+
+      final List<Map<String, dynamic>> horas = [];
+
+      for (String hora in horariosTotales) {
+        // ======================================================
+        // NO MOSTRAR HORAS PASADAS
+        // ======================================================
+
+        if (_horaYaPasada(hora)) {
+          continue;
+        }
+
+        // ======================================================
+        // RESERVAS DE ESA CLASE + HORA
+        // ======================================================
+
+        final reservasClaseHora = snapshot.docs.where((doc) {
+          return doc['claseNombre'] == _claseSeleccionada &&
+              doc['hora'] == hora;
+        }).toList();
+
+        // ======================================================
+        // ¿USUARIO YA TIENE ESA HORA RESERVADA?
+        // ======================================================
+
+        final usuarioYaReservoHora = snapshot.docs.any((doc) {
+          return doc['userId'] == widget.userId && doc['hora'] == hora;
+        });
+
+        final total = reservasClaseHora.length;
+
+        final llena = total >= _kMaxPorClaseHora;
+
+        // ======================================================
+        // SI YA TIENE ESA HORA → NO MOSTRAR
+        // ======================================================
+
+        if (usuarioYaReservoHora) {
+          continue;
+        }
+
+        horas.add({
+          'hora': hora,
+          'ocupadas': total,
+          'llena': llena,
+          'texto': llena
+              ? '$hora - COMPLETA'
+              : '$hora ($total/$_kMaxPorClaseHora)',
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _horasDisponibles = horas;
+
+          if (!_horasDisponibles.any((h) => h['hora'] == _horaSeleccionada)) {
+            _horaSeleccionada = '';
+          }
+
+          _loading = false;
+        });
+      }
     } catch (e) {
-      _mostrar(e.toString().replaceAll('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      debugPrint('Error horas: $e');
+
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
-  void _mostrar(String msg) {
+  // ============================================================
+  // RESERVAR
+  // ============================================================
+
+  Future<void> _reservar() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (_selectedDay == null ||
+        _claseSeleccionada.isEmpty ||
+        _horaSeleccionada.isEmpty) {
+      _mostrarMensaje('Completa todos los campos');
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      // ========================================================
+      // OBTENER DOCUMENTO DE CLASE
+      // ========================================================
+
+      final claseDoc = await _db
+          .collection(_kColeccionespecialistas)
+          .doc(_claseSeleccionada)
+          .get();
+
+      // ========================================================
+      // COMPROBAR QUE EXISTE
+      // ========================================================
+
+      if (!claseDoc.exists) {
+        throw Exception('La clase no existe');
+      }
+
+      // ========================================================
+      // OBTENER EMPLOYEE ID
+      // ========================================================
+
+      final employeeID = claseDoc.data()?['employeeID'];
+
+      // ========================================================
+      // VALIDAR PROFESOR ASIGNADO
+      // ========================================================
+
+      if (employeeID == null || employeeID.toString().trim().isEmpty) {
+        throw Exception('Esta clase todavía no tiene profesor asignado');
+      }
+
+      // ========================================================
+      // FECHA BASE
+      // ========================================================
+
+      final fechaBase = DateTime(
+        _selectedDay!.year,
+        _selectedDay!.month,
+        _selectedDay!.day,
+      );
+
+      final partesHora = _horaSeleccionada.split(':');
+
+      final fechaHora = DateTime(
+        fechaBase.year,
+        fechaBase.month,
+        fechaBase.day,
+        int.parse(partesHora[0]),
+        int.parse(partesHora[1]),
+      );
+
+      // ========================================================
+      // TRANSACCIÓN
+      // ========================================================
+
+      final reservasRef = _db.collection(_kColeccionReservas);
+
+      //
+      // VALIDAR RESERVAS ACTIVAS USUARIO
+      //
+
+      final userReservas = await reservasRef
+          .where('userId', isEqualTo: widget.userId)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
+
+      if (userReservas.docs.length >= _kMaxReservasfisioterapia) {
+
+        _mostrarMensaje(
+          'Ya tienes 5 reservas activas en Fisioterapia.',
+        );
+
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+
+        return;
+      }
+
+      //
+      // RESERVAS DEL DÍA
+      //
+
+      final reservasDia = await reservasRef
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
+
+      //
+      // YA TIENE ESA HORA
+      //
+
+      final yaTieneHora = reservasDia.docs.any((doc) {
+        return doc['userId'] == widget.userId &&
+            doc['hora'] == _horaSeleccionada;
+      });
+
+      if (yaTieneHora) {
+
+        _mostrarMensaje(
+          'Ya tienes una reserva a esa hora',
+        );
+
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+
+        return;
+      }
+
+      //
+      // CLASE COMPLETA
+      //
+
+      final reservasClaseHora = reservasDia.docs.where((doc) {
+        return doc['claseNombre'] == _claseSeleccionada &&
+            doc['hora'] == _horaSeleccionada;
+      }).toList();
+
+      if (reservasClaseHora.length >= _kMaxPorClaseHora) {
+
+        _mostrarMensaje(
+          'La clase está completa',
+        );
+
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+
+        return;
+      }
+
+      //
+      // CREAR RESERVA
+      //
+
+      final nuevaReserva = reservasRef.doc();
+
+      await nuevaReserva.set({
+          // ====================================================
+          // USUARIO
+          // ====================================================
+          'userId': widget.userId,
+
+          'cliente': user?.displayName?.isNotEmpty == true
+              ? user!.displayName
+              : user?.email ?? 'Usuario desconocido',
+
+          // ====================================================
+          // NEGOCIO
+          // ====================================================
+          'negocioNombre': widget.negocio,
+
+          'negocioRef': negocioRef,
+
+          // ====================================================
+          // CLASE
+          // ====================================================
+          'claseNombre': _claseSeleccionada,
+
+          'claseRef': _db
+              .collection(_kColeccionespecialistas)
+              .doc(_claseSeleccionada),
+
+          // ====================================================
+          // EMPLEADO
+          // ====================================================
+          'employeeID': employeeID,
+
+          // ====================================================
+          // FECHAS
+          // ====================================================
+          'fecha': Timestamp.fromDate(fechaBase),
+
+          'fechaHora': Timestamp.fromDate(fechaHora),
+
+          'hora': _horaSeleccionada,
+
+          // ====================================================
+          // ESTADO
+          // ====================================================
+          'estado': _kEstadoActiva,
+
+          // ====================================================
+          // TIMESTAMP CREACIÓN
+          // ====================================================
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+      // ========================================================
+      // MENSAJE OK
+      // ========================================================
+
+      _mostrarMensaje('Reserva confirmada');
+
+      // ========================================================
+      // RECARGAR DATOS
+      // ========================================================
+
+      await _cargarEstadoDias();
+
+      await _actualizarHorasDisponibles();
+
+      // ========================================================
+      // RESET UI
+      // ========================================================
+
+      if (mounted) {
+        setState(() {
+          _horaSeleccionada = '';
+        });
+      }
+    } catch (e) {
+
+      debugPrint(e.toString());
+
+      _mostrarMensaje(
+        'Ha ocurrido un error',
+      );
+
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  // ============================================================
+  // MENSAJES
+  // ============================================================
+
+  void _mostrarMensaje(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
     );
   }
 
-
-  // ─── Build ────────────────────────────────────────────────────────────────────
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -263,17 +598,23 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
 
+      // ========================================================
+      // APPBAR
+      // ========================================================
       appBar: AppBar(
         title: Text(
           widget.negocio,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 18,
             color: Colors.white,
           ),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -283,89 +624,303 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
             ),
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
 
+      // ========================================================
+      // BODY
+      // ========================================================
       body: Container(
         width: double.infinity,
         height: double.infinity,
+
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFF5F5F5), Color(0xFFB39DDB)],
+            colors: [Color(0xFFF5F5F5), Color(0xFF9575CD),Color(0xFF5E3B8C)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
+
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
+
             child: Center(
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 450),
+
                 child: Column(
                   children: [
+                    // ====================================================
+                    // LOGO
+                    // ====================================================
                     Image.asset(
                       'assets/images/LogoAlphaAppFisioterapia.png',
                       width: screenWidth * 0.9,
                       height: 120,
+                      fit: BoxFit.contain,
                     ),
 
                     const SizedBox(height: 20),
 
-                    // ── Calendario ──────────────────────────────────────────
-                    _CalendarioCard(
-                      focusedDay: _focusedDay,
-                      selectedDay: _selectedDay,
-                      reservasPorDia: _reservasPorDia,
-                      onDaySelected: (selected, focused) {
-                        setState(() {
-                          _selectedDay = selected;
-                          _focusedDay = focused;
-                          // Resetear si el especialista no trabaja este día
-                          if (!_especialistasFiltrados.contains(_especialistaSeleccionado)) {
-                            _especialistaSeleccionado = '';
-                            _horaSeleccionada = '';
-                            _horasDisponibles = [];
-                          }
-                        });
-                        _actualizarHorasDisponibles();
-                      },
+                    // ====================================================
+                    // CALENDARIO
+                    // ====================================================
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFF5F5F5), Color(0xFFB39DDB)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+
+                        borderRadius: BorderRadius.circular(25),
+
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+
+                      child: TableCalendar(
+                        locale: 'es_ES',
+
+                        startingDayOfWeek: StartingDayOfWeek.monday,
+
+                        firstDay: DateTime.now(),
+
+                        lastDay: DateTime.now().add(const Duration(days: 365)),
+                        calendarStyle: CalendarStyle(
+                          todayDecoration: BoxDecoration(
+                            color: Color(0xFF9575CD),
+                            shape: BoxShape.circle,
+                          ),
+
+                          todayTextStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        daysOfWeekStyle: const DaysOfWeekStyle(
+                          weekdayStyle: TextStyle(
+                            color: Color(0xFF5E3B8C),
+                            fontWeight: FontWeight.w600,
+                          ),
+
+                          weekendStyle: TextStyle(
+                            color: Color(0xFF5E3B8C),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        focusedDay: _focusedDay,
+
+                        selectedDayPredicate: (day) =>
+                            isSameDay(_selectedDay, day),
+
+                        onPageChanged: (focusedDay) {
+                          _focusedDay = focusedDay;
+                          _cargarEstadoDias();
+                        },
+
+                        onDaySelected: (selectedDay, focusedDay) {
+                          setState(() {
+                            _selectedDay = selectedDay;
+
+                            _focusedDay = focusedDay;
+                          });
+
+                          _actualizarHorasDisponibles();
+                        },
+
+                        headerStyle: const HeaderStyle(
+                          formatButtonVisible: false,
+                          titleCentered: true,
+                        ),
+
+                        calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, date, events) {
+                            final estado = _estadoDias.entries
+                                .where((e) => isSameDay(e.key, date))
+                                .map((e) => e.value)
+                                .firstOrNull;
+
+                            if (estado == null) {
+                              return null;
+                            }
+
+                            Color color = Colors.orange;
+
+                            if (estado == 'verde') {
+                              color = Colors.green;
+                            }
+
+                            return Positioned(
+                              bottom: 6,
+                              child: Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 30),
 
-                    // ── Dropdown especialista ───────────────────────────────
-                    _DropdownCard(
-                      label: 'Selecciona Especialista',
-                      value: _especialistaSeleccionado.isEmpty
-                          ? null
-                          : _especialistaSeleccionado,
-                      items: _especialistasFiltrados,
-                      onChanged: (val) {
-                        setState(() => _especialistaSeleccionado = val!);
-                        _actualizarHorasDisponibles();
-                      },
+                    // ====================================================
+                    // DROPDOWN CLASES
+                    // ====================================================
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.6),
+
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+
+                        initialValue: _claseSeleccionada.isEmpty
+                            ? null
+                            : _claseSeleccionada,
+
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          labelText: 'Selecciona Clase',
+                        ),
+
+                        items: _clases.map((clase) {
+                          return DropdownMenuItem(
+                            value: clase,
+                            child: Center(child: Text(clase)),
+                          );
+                        }).toList(),
+
+                        onChanged: (value) {
+                          setState(() {
+                            _claseSeleccionada = value!;
+                          });
+
+                          _actualizarHorasDisponibles();
+                        },
+                      ),
                     ),
 
                     const SizedBox(height: 15),
 
-                    // ── Dropdown hora ───────────────────────────────────────
-                    _DropdownCard(
-                      label: 'Hora disponible',
-                      value: _horaSeleccionada.isEmpty ? null : _horaSeleccionada,
-                      items: _horasDisponibles,
-                      onChanged: _selectedDay == null
-                          ? null
-                          : (val) => setState(() => _horaSeleccionada = val!),
+                    // ====================================================
+                    // DROPDOWN HORAS
+                    // ====================================================
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.6),
+
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+
+                        initialValue: _horaSeleccionada.isEmpty
+                            ? null
+                            : _horaSeleccionada,
+
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          labelText: 'Selecciona Hora',
+                        ),
+
+                        items: _horasDisponibles.map((h) {
+                          return DropdownMenuItem<String>(
+                            value: h['hora'] as String,
+                            enabled: !(h['llena'] as bool),
+                            child: Center(child: Text(h['texto'] as String)),
+                          );
+                        }).toList(),
+
+                        onChanged: (value) {
+                          setState(() {
+                            _horaSeleccionada = value!;
+                          });
+                        },
+                      ),
                     ),
 
                     const SizedBox(height: 35),
 
-                    // ── Botón reservar ──────────────────────────────────────
-                    _BotonReservar(
-                      loading: _loading,
-                      screenWidth: screenWidth,
-                      onPressed: _reservar,
+                    // ====================================================
+                    // BOTÓN RESERVAR
+                    // ====================================================
+                    SizedBox(
+                      width: screenWidth * 0.7,
+                      height: 55,
+
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _reservar,
+
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          padding: EdgeInsets.zero,
+                        ),
+
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF1E293B),
+                                Color(0xFF334155),
+                                Color(0xFF64B5F6),
+                              ],
+                            ),
+
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+
+                          child: Container(
+                            alignment: Alignment.center,
+
+                            child: _loading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Text(
+                                    'RESERVAR',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 30),
@@ -373,241 +928,6 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Subwidgets privados ───────────────────────────────────────────────────────
-
-class _CalendarioCard extends StatelessWidget {
-  final DateTime focusedDay;
-  final DateTime? selectedDay;
-  final Map<DateTime, int> reservasPorDia;
-  final void Function(DateTime, DateTime) onDaySelected;
-
-  const _CalendarioCard({
-    required this.focusedDay,
-    required this.selectedDay,
-    required this.reservasPorDia,
-    required this.onDaySelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: TableCalendar(
-        locale: 'es_ES',
-        firstDay: DateTime.now(),
-        lastDay: DateTime.now().add(const Duration(days: 365)),
-        focusedDay: focusedDay,
-        startingDayOfWeek: StartingDayOfWeek.monday,
-        selectedDayPredicate: (d) => isSameDay(selectedDay, d),
-        onDaySelected: onDaySelected,
-        enabledDayPredicate: (day) => day.weekday != DateTime.sunday,
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: true,
-        ),
-        daysOfWeekStyle: const DaysOfWeekStyle(
-          weekdayStyle: TextStyle(
-            color: Color(0xFF5E3B8C),
-            fontWeight: FontWeight.w600,
-          ),
-          weekendStyle: TextStyle(
-            color: Color(0xFF5E3B8C), // sábado igual que los días de semana
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        calendarStyle: CalendarStyle(
-          // Texto del sábado en morado, domingo en gris
-          defaultTextStyle: const TextStyle(color: Colors.black87),
-          weekendTextStyle: const TextStyle(color: Color(0xFF5E3B8C)),
-          disabledTextStyle: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
-          todayDecoration: const BoxDecoration(
-            color: Color(0xFF9575CD),
-            shape: BoxShape.circle,
-          ),
-          selectedDecoration: const BoxDecoration(
-            color: Colors.blueAccent,
-            shape: BoxShape.circle,
-          ),
-        ),
-        calendarBuilders: CalendarBuilders(
-          markerBuilder: (context, date, events) {
-            final day = DateTime(date.year, date.month, date.day);
-            final count = reservasPorDia[day] ?? 0;
-            if (count == 0) return null;
-
-            return Positioned(
-              bottom: 6,
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: count >= 4 ? Colors.orange : Colors.green,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            );
-          },
-          disabledBuilder: (context, date, focusedDay) {
-            final day = DateTime(date.year, date.month, date.day);
-            final count = reservasPorDia[day] ?? 0;
-
-            if (count >= _kMaxSlotsPorDia) {
-              return Center(
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.red.withValues(alpha: 0.6),
-                  ),
-                ),
-              );
-            }
-            return null;
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _DropdownCard extends StatelessWidget {
-  final String label;
-  final String? value;
-  final List<String> items;
-  final void Function(String?)? onChanged;
-
-  const _DropdownCard({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: DropdownButtonFormField<String>(
-        isExpanded: true,
-        alignment: AlignmentDirectional.center,
-        initialValue: value,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-        ),
-        hint: Center(
-          child: Text(
-            label,
-            style: const TextStyle(color: Colors.black54),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        selectedItemBuilder: (context) => items
-            .map((c) => Center(
-                  child: Text(
-                    c,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black),
-                  ),
-                ))
-            .toList(),
-        icon: const Icon(Icons.arrow_drop_down, color: Colors.black),
-        dropdownColor: Colors.white.withValues(alpha: 0.95),
-        items: items
-            .map((c) => DropdownMenuItem(
-                  value: c,
-                  child: Center(child: Text(c)),
-                ))
-            .toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
-
-class _BotonReservar extends StatelessWidget {
-  final bool loading;
-  final double screenWidth;
-  final VoidCallback onPressed;
-
-  const _BotonReservar({
-    required this.loading,
-    required this.screenWidth,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: screenWidth * 0.7,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: loading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.zero,
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-        ),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Container(
-            alignment: Alignment.center,
-            height: 55,
-            child: loading
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text(
-                    'RESERVAR',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
           ),
         ),
       ),

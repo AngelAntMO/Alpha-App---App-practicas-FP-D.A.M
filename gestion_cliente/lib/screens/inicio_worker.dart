@@ -1,34 +1,64 @@
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:gestion_cliente/screens/agendaworker_screen.dart';
 import 'profile_worker.dart';
 import 'package:gestion_cliente/screens/worker_check_screen.dart';
 
 class InicioWorker extends StatefulWidget {
   const InicioWorker({super.key});
 
+
   @override
   State<InicioWorker> createState() => _InicioWorkerState();
 }
 
+
 class _InicioWorkerState extends State<InicioWorker>
     with SingleTickerProviderStateMixin {
+
+  bool _hasNewReservas = false;
+  int _previousCount = 0;
+
+
   late AnimationController _controller;
   late Animation<double> _scaleAnim;
 
   @override
-  void initState() {
-    super.initState();
+void initState() {
+  super.initState();
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+  _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  )..repeat(reverse: true);
 
-    _scaleAnim = Tween<double>(
-      begin: 1.0,
-      end: 1.10,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
+  _scaleAnim = Tween<double>(
+    begin: 1.0,
+    end: 1.10,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  _listenReservas();
+}
+
+void _listenReservas() {
+  FirebaseFirestore.instance
+      .collection('reservas')
+      .snapshots()
+      .listen((snapshot) {
+
+    int currentCount = snapshot.docs.length;
+
+    if (currentCount > _previousCount) {
+      setState(() {
+        _hasNewReservas = true;
+      });
+    }
+
+    _previousCount = currentCount;
+  });
+}
 
   @override
   void dispose() {
@@ -217,11 +247,47 @@ class _InicioWorkerState extends State<InicioWorker>
                   ),
                   const SizedBox(height: 20),
 
-                  HoverButton(
-                    icon: Icons.schedule,
-                    text: "Agenda",
-                    onTap: () {},
-                  ),
+                 HoverButton(
+  text: "Agenda",
+  onTap: () {
+    setState(() {
+      _hasNewReservas = false;
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AgendaWorkerPage(),
+      ),
+    );
+  },
+  builder: (context, isHovered) {
+    return Stack(
+      children: [
+        Icon(
+          _hasNewReservas
+              ? Icons.notifications
+              : Icons.calendar_today,
+          color: isHovered ? Colors.blueAccent : Colors.white,
+          size: 28,
+        ),
+        if (_hasNewReservas)
+          Positioned(
+            right: 0,
+            top: 0,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+      ],
+    );
+  }, icon: null,
+),
                   const SizedBox(height: 20),
 
                   HoverButton(
@@ -249,15 +315,17 @@ class _InicioWorkerState extends State<InicioWorker>
 }
 
 class HoverButton extends StatefulWidget {
-  final IconData icon;
+  final IconData? icon;
   final String text;
   final VoidCallback onTap;
+  final Widget Function(BuildContext, bool)? builder;
 
   const HoverButton({
     super.key,
-    required this.icon,
+    this.icon,
     required this.text,
     required this.onTap,
+    this.builder,
   });
 
   @override
@@ -307,11 +375,13 @@ class _HoverButtonState extends State<HoverButton> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AnimatedScale(
+                     AnimatedScale(
                         scale: _isHovering ? 1.15 : 1.0,
                         duration: const Duration(milliseconds: 200),
-                        child: Icon(widget.icon, color: Colors.blueAccent),
-                      ),
+                        child: widget.builder != null
+                        ? widget.builder!(context, _isHovering)
+                        : Icon(widget.icon, color: Colors.blueAccent),
+                        ),  
                       const SizedBox(width: 12),
                       Text(
                         widget.text,
