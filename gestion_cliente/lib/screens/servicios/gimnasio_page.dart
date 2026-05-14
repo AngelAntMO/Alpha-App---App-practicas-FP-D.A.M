@@ -396,13 +396,11 @@ class _GimnasioPageState extends State<GimnasioPage> {
       // TRANSACCIÓN
       // ========================================================
 
-      await _db.runTransaction((transaction) async {
-        final reservasRef = _db.collection(_kColeccionReservas);
+      final reservasRef = _db.collection(_kColeccionReservas);
 
-        // ======================================================
-        // CONTAR RESERVAS ACTIVAS DEL USUARIO
-        // SOLO EN ACADEMIA
-        // ======================================================
+        //
+        // VALIDAR RESERVAS ACTIVAS USUARIO
+        //
 
         final userReservas = await reservasRef
             .where('userId', isEqualTo: widget.userId)
@@ -411,12 +409,21 @@ class _GimnasioPageState extends State<GimnasioPage> {
             .get();
 
         if (userReservas.docs.length >= _kMaxReservasgim) {
-          throw ('Ya tienes $_kMaxReservasgim reservas en Gimnasio, no puedes reservar más.');
+
+          _mostrarMensaje(
+            'Ya tienes 5 reservas activas en Gimnasio',
+          );
+
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+
+          return;
         }
 
-        // ======================================================
+        //
         // RESERVAS DEL DÍA
-        // ======================================================
+        //
 
         final reservasDia = await reservasRef
             .where('negocioRef', isEqualTo: negocioRef)
@@ -424,9 +431,9 @@ class _GimnasioPageState extends State<GimnasioPage> {
             .where('estado', isEqualTo: _kEstadoActiva)
             .get();
 
-        // ======================================================
-        // USUARIO YA TIENE ESA HORA
-        // ======================================================
+        //
+        // YA TIENE ESA HORA
+        //
 
         final yaTieneHora = reservasDia.docs.any((doc) {
           return doc['userId'] == widget.userId &&
@@ -434,12 +441,21 @@ class _GimnasioPageState extends State<GimnasioPage> {
         });
 
         if (yaTieneHora) {
-          throw Exception('Ya tienes una reserva a esa hora');
+
+          _mostrarMensaje(
+            'Ya tienes una reserva a esa hora',
+          );
+
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+
+          return;
         }
 
-        // ======================================================
-        // CONTAR PERSONAS EN ESA CLASE + HORA
-        // ======================================================
+        //
+        // CLASE COMPLETA
+        //
 
         final reservasClaseHora = reservasDia.docs.where((doc) {
           return doc['claseNombre'] == _claseSeleccionada &&
@@ -447,16 +463,25 @@ class _GimnasioPageState extends State<GimnasioPage> {
         }).toList();
 
         if (reservasClaseHora.length >= _kMaxPorClaseHora) {
-          throw Exception('La clase está completa');
+
+          _mostrarMensaje(
+            'La clase está completa',
+          );
+
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+
+          return;
         }
 
-        // ======================================================
+        //
         // CREAR RESERVA
-        // ======================================================
+        //
 
         final nuevaReserva = reservasRef.doc();
 
-        transaction.set(nuevaReserva, {
+        await nuevaReserva.set({
           // ====================================================
           // USUARIO
           // ====================================================
@@ -504,7 +529,6 @@ class _GimnasioPageState extends State<GimnasioPage> {
           // ====================================================
           'timestamp': FieldValue.serverTimestamp(),
         });
-      });
 
       // ========================================================
       // MENSAJE OK

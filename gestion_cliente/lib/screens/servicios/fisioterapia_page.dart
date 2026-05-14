@@ -404,67 +404,92 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
       // TRANSACCIÓN
       // ========================================================
 
-      await _db.runTransaction((transaction) async {
-        final reservasRef = _db.collection(_kColeccionReservas);
+      final reservasRef = _db.collection(_kColeccionReservas);
 
-        // ======================================================
-        // CONTAR RESERVAS ACTIVAS DEL USUARIO
-        // SOLO EN ACADEMIA
-        // ======================================================
+      //
+      // VALIDAR RESERVAS ACTIVAS USUARIO
+      //
 
-        final userReservas = await reservasRef
-            .where('userId', isEqualTo: widget.userId)
-            .where('negocioRef', isEqualTo: negocioRef)
-            .where('estado', isEqualTo: _kEstadoActiva)
-            .get();
+      final userReservas = await reservasRef
+          .where('userId', isEqualTo: widget.userId)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
 
-        if (userReservas.docs.length >= _kMaxReservasfisioterapia) {
-          throw ('Ya tienes $_kMaxReservasfisioterapia reservas en Fisioterapia, no puedes reservar más.');
+      if (userReservas.docs.length >= _kMaxReservasfisioterapia) {
+
+        _mostrarMensaje(
+          'Ya tienes 5 reservas activas en Fisioterapia.',
+        );
+
+        if (mounted) {
+          setState(() => _loading = false);
         }
 
-        // ======================================================
-        // RESERVAS DEL DÍA
-        // ======================================================
+        return;
+      }
 
-        final reservasDia = await reservasRef
-            .where('negocioRef', isEqualTo: negocioRef)
-            .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
-            .where('estado', isEqualTo: _kEstadoActiva)
-            .get();
+      //
+      // RESERVAS DEL DÍA
+      //
 
-        // ======================================================
-        // USUARIO YA TIENE ESA HORA
-        // ======================================================
+      final reservasDia = await reservasRef
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
 
-        final yaTieneHora = reservasDia.docs.any((doc) {
-          return doc['userId'] == widget.userId &&
-              doc['hora'] == _horaSeleccionada;
-        });
+      //
+      // YA TIENE ESA HORA
+      //
 
-        if (yaTieneHora) {
-          throw Exception('Ya tienes una reserva a esa hora');
+      final yaTieneHora = reservasDia.docs.any((doc) {
+        return doc['userId'] == widget.userId &&
+            doc['hora'] == _horaSeleccionada;
+      });
+
+      if (yaTieneHora) {
+
+        _mostrarMensaje(
+          'Ya tienes una reserva a esa hora',
+        );
+
+        if (mounted) {
+          setState(() => _loading = false);
         }
 
-        // ======================================================
-        // CONTAR PERSONAS EN ESA CLASE + HORA
-        // ======================================================
+        return;
+      }
 
-        final reservasClaseHora = reservasDia.docs.where((doc) {
-          return doc['claseNombre'] == _claseSeleccionada &&
-              doc['hora'] == _horaSeleccionada;
-        }).toList();
+      //
+      // CLASE COMPLETA
+      //
 
-        if (reservasClaseHora.length >= _kMaxPorClaseHora) {
-          throw Exception('La clase está completa');
+      final reservasClaseHora = reservasDia.docs.where((doc) {
+        return doc['claseNombre'] == _claseSeleccionada &&
+            doc['hora'] == _horaSeleccionada;
+      }).toList();
+
+      if (reservasClaseHora.length >= _kMaxPorClaseHora) {
+
+        _mostrarMensaje(
+          'La clase está completa',
+        );
+
+        if (mounted) {
+          setState(() => _loading = false);
         }
 
-        // ======================================================
-        // CREAR RESERVA
-        // ======================================================
+        return;
+      }
 
-        final nuevaReserva = reservasRef.doc();
+      //
+      // CREAR RESERVA
+      //
 
-        transaction.set(nuevaReserva, {
+      final nuevaReserva = reservasRef.doc();
+
+      await nuevaReserva.set({
           // ====================================================
           // USUARIO
           // ====================================================
@@ -514,7 +539,6 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
           // ====================================================
           'timestamp': FieldValue.serverTimestamp(),
         });
-      });
 
       // ========================================================
       // MENSAJE OK
@@ -540,16 +564,13 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
         });
       }
     } catch (e) {
-      String errorTexto = e.toString();
 
-      errorTexto = errorTexto.replaceFirst('Exception: ', '');
+      debugPrint(e.toString());
 
-      errorTexto = errorTexto.replaceAll(RegExp(r'\[.*?\]'), '');
+      _mostrarMensaje(
+        'Ha ocurrido un error',
+      );
 
-      errorTexto = errorTexto.trim();
-
-      _mostrarMensaje(errorTexto);
-    } finally {
       if (mounted) {
         setState(() => _loading = false);
       }
