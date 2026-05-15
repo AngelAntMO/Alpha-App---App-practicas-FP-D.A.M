@@ -1,19 +1,44 @@
+// ============================================================
+// ACADEMIA PAGE - SISTEMA DE RESERVAS MEJORADO
+// ============================================================
+//
+// MEJORAS IMPLEMENTADAS:
+//
+// ✅ Clases dinámicas desde Firestore
+// ✅ EmployeeID obligatorio para reservar
+// ✅ Máximo 5 reservas activas SOLO en Academia
+// ✅ Máximo 15 personas por clase + hora + día
+// ✅ Un usuario NO puede reservar dos clases a la misma hora
+// ✅ Un usuario SÍ puede reservar varias clases el mismo día
+// ✅ Bloqueo de horas pasadas del día actual
+// ✅ Indicadores visuales en calendario
+// ✅ Horas muestran plazas disponibles
+// ✅ Código comentado para el equipo
+//
+// ============================================================
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:table_calendar/table_calendar.dart';
 
-const _kColeccion = 'reservas';
+// ============================================================
+// CONSTANTES
+// ============================================================
+
+const _kColeccionReservas = 'reservas';
+const _kColeccionClases = 'clases';
+
 const _kEstadoActiva = 'activa';
-const _kCampoFecha = 'fecha';
-const _kCampoHora = 'hora';
-const _kCampoEstado = 'estado';
-const _kCampoUserId = 'userId';
-const _kCampoNegocioRef = 'negocioRef';
-const _kCampoClase = 'claseNombre';
-const _kMaxReservas = 3;
-const _kMaxPorHora = 10;
+const _kEstadoFinalizada = 'finalizada';
+
+const _kMaxReservasYoga = 5;
+const _kMaxPorClaseHora = 15;
+
+// ============================================================
+// WIDGET PRINCIPAL
+// ============================================================
 
 class YogaPage extends StatefulWidget {
   final String userId;
@@ -26,65 +51,191 @@ class YogaPage extends StatefulWidget {
 }
 
 class _YogaPageState extends State<YogaPage> {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // ============================================================
+  // VARIABLES CALENDARIO
+  // ============================================================
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  List<DateTime> _blockedDays = [];
-  List<String> _horasDisponibles = [];
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // ============================================================
+  // VARIABLES UI
+  // ============================================================
+
+  bool _loading = false;
+
+  String _claseSeleccionada = '';
+  String _horaSeleccionada = '';
+
+  // ============================================================
+  // DATOS DINÁMICOS
+  // ============================================================
+
+  List<String> _clases = [];
+
+  // Lista visual de horas:
+  // Ej:
+  // 16:00 (12/15)
+  List<Map<String, dynamic>> _horasDisponibles = [];
+
+  // Días con reservas para pintar puntos
+  final Map<DateTime, String> _estadoDias = {};
+
+  // ============================================================
+  // HORARIOS FIJOS
+  // ============================================================
+
+  final List<String> horariosTotales = ['08:00', '09:00', '10:00', '11:00', '12:00'];
+
+  // ============================================================
+  // REFERENCIA NEGOCIO
+  // ============================================================
 
   DocumentReference get negocioRef =>
       _db.collection('negocios').doc(widget.negocio);
 
-  String _horaSeleccionada = '';
-  String _claseSeleccionada = '';
-  bool _loading = false;
-
-  final List<String> clases = ['Yoga Suave', 'Vinyasa', 'Power Yoga', 'Meditación'];
-  final List<String> horariosTotales = ['08:00', '10:00', '18:00', '20:00'];
+  // ============================================================
+  // INIT
+  // ============================================================
 
   @override
   void initState() {
     super.initState();
+
     initializeDateFormatting('es_ES', null);
-    _fetchBlockedDays();
-    _horasDisponibles = List.from(horariosTotales);
+
+    _cargarClases();
+    _cargarEstadoDias();
+    _actualizarReservasPasadas();
   }
 
-  Future<void> _fetchBlockedDays() async {
+  // ============================================================
+  // CARGAR CLASES DINÁMICAS DESDE FIRESTORE
+  // ============================================================
+
+  Future<void> _cargarClases() async {
+    try {
+      final snapshot = await _db
+          .collection(_kColeccionClases)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .get();
+
+      final clases = snapshot.docs
+          .map((doc) => doc['nombre'].toString())
+          .toList();
+
+      clases.sort();
+
+      if (mounted) {
+        setState(() {
+          _clases = clases;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando clases: $e');
+    }
+  }
+
+  // ============================================================
+  // ACTUALIZAR RESERVAS PASADAS A FINALIZADA
+  // ============================================================
+
+  Future<void> _actualizarReservasPasadas() async {
+    try {
+      final ahora = Timestamp.fromDate(DateTime.now());
+
+      final snapshot = await _db
+          .collection(_kColeccionReservas)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .where('fechaHora', isLessThan: ahora)
+          .get();
+
+      for (var doc in snapshot.docs) {
+        await doc.reference.update({'estado': _kEstadoFinalizada});
+      }
+    } catch (e) {
+      debugPrint('Error actualizando reservas: $e');
+    }
+  }
+
+  // ============================================================
+  // CARGAR ESTADO VISUAL DEL CALENDARIO
+  // ============================================================
+
+  Future<void> _cargarEstadoDias() async {
     try {
       final inicio = DateTime(_focusedDay.year, _focusedDay.month, 1);
+
       final fin = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
 
       final snapshot = await _db
-          .collection(_kColeccion)
-          .where(_kCampoNegocioRef, isEqualTo: negocioRef)
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
-          .where(
-            _kCampoFecha,
-            isGreaterThanOrEqualTo: Timestamp.fromDate(inicio),
-          )
-          .where(_kCampoFecha, isLessThanOrEqualTo: Timestamp.fromDate(fin))
+          .collection(_kColeccionReservas)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .where('fecha', isGreaterThanOrEqualTo: Timestamp.fromDate(inicio))
+          .where('fecha', isLessThanOrEqualTo: Timestamp.fromDate(fin))
           .get();
-      final Set<DateTime> blocked = {};
+
+      final Map<DateTime, String> estados = {};
 
       for (var doc in snapshot.docs) {
         final fecha = (doc['fecha'] as Timestamp).toDate();
 
-        blocked.add(DateTime(fecha.year, fecha.month, fecha.day));
+        final dia = DateTime(fecha.year, fecha.month, fecha.day);
+
+        final userId = doc['userId'];
+
+        // Si el usuario tiene reserva → verde
+        if (userId == widget.userId) {
+          estados[dia] = 'verde';
+        } else {
+          estados.putIfAbsent(dia, () => 'naranja');
+        }
       }
 
       if (mounted) {
         setState(() {
-          _blockedDays = blocked.toList();
+          _estadoDias.clear();
+          _estadoDias.addAll(estados);
         });
       }
     } catch (e) {
-      debugPrint("Error días bloqueados: $e");
+      debugPrint('Error estado días: $e');
     }
   }
 
+  // ============================================================
+  // COMPROBAR SI UNA HORA YA PASÓ
+  // ============================================================
+
+  bool _horaYaPasada(String hora) {
+    if (_selectedDay == null) return false;
+
+    final ahora = DateTime.now();
+
+    final partes = hora.split(':');
+
+    final fechaHora = DateTime(
+      _selectedDay!.year,
+      _selectedDay!.month,
+      _selectedDay!.day,
+      int.parse(partes[0]),
+      int.parse(partes[1]),
+    );
+
+    return fechaHora.isBefore(ahora);
+  }
+
+  // ============================================================
+  // ACTUALIZAR HORAS DISPONIBLES
+  // ============================================================
+
   Future<void> _actualizarHorasDisponibles() async {
-    if (_selectedDay == null || _claseSeleccionada.isEmpty) return;
+    if (_selectedDay == null || _claseSeleccionada.isEmpty) {
+      return;
+    }
 
     setState(() => _loading = true);
 
@@ -96,182 +247,352 @@ class _YogaPageState extends State<YogaPage> {
       );
 
       final snapshot = await _db
-          .collection(_kColeccion)
-          .where(_kCampoNegocioRef, isEqualTo: negocioRef)
-          .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fechaBusqueda))
-          .where(_kCampoClase, isEqualTo: _claseSeleccionada)
-          .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+          .collection(_kColeccionReservas)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBusqueda))
+          .where('estado', isEqualTo: _kEstadoActiva)
           .get();
 
-      final Map<String, int> conteoPorHora = {};
-      final Set<String> misHoras = {};
+      final List<Map<String, dynamic>> horas = [];
 
-      for (var doc in snapshot.docs) {
-        final hora = doc[_kCampoHora] as String;
-        final userId = doc[_kCampoUserId] as String;
+      for (String hora in horariosTotales) {
+        // ======================================================
+        // NO MOSTRAR HORAS PASADAS
+        // ======================================================
 
-        conteoPorHora[hora] = (conteoPorHora[hora] ?? 0) + 1;
-
-        if (userId == widget.userId) {
-          misHoras.add(hora);
+        if (_horaYaPasada(hora)) {
+          continue;
         }
-      }
 
-      setState(() {
-        _horasDisponibles = horariosTotales.where((h) {
-          final total = conteoPorHora[h] ?? 0;
-          final yaReservado = misHoras.contains(h);
+        // ======================================================
+        // RESERVAS DE ESA CLASE + HORA
+        // ======================================================
 
-          return total < _kMaxPorHora && !yaReservado;
+        final reservasClaseHora = snapshot.docs.where((doc) {
+          return doc['claseNombre'] == _claseSeleccionada &&
+              doc['hora'] == hora;
         }).toList();
 
-        if (!_horasDisponibles.contains(_horaSeleccionada)) {
-          _horaSeleccionada = '';
+        // ======================================================
+        // ¿USUARIO YA TIENE ESA HORA RESERVADA?
+        // ======================================================
+
+        final usuarioYaReservoHora = snapshot.docs.any((doc) {
+          return doc['userId'] == widget.userId && doc['hora'] == hora;
+        });
+
+        final total = reservasClaseHora.length;
+
+        final llena = total >= _kMaxPorClaseHora;
+
+        // ======================================================
+        // SI YA TIENE ESA HORA → NO MOSTRAR
+        // ======================================================
+
+        if (usuarioYaReservoHora) {
+          continue;
         }
 
-        _loading = false;
-      });
+        horas.add({
+          'hora': hora,
+          'ocupadas': total,
+          'llena': llena,
+          'texto': llena
+              ? '$hora - COMPLETA'
+              : '$hora ($total/$_kMaxPorClaseHora)',
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _horasDisponibles = horas;
+
+          if (!_horasDisponibles.any((h) => h['hora'] == _horaSeleccionada)) {
+            _horaSeleccionada = '';
+          }
+
+          _loading = false;
+        });
+      }
     } catch (e) {
-      debugPrint("Error horas disponibles: $e");
-      setState(() => _loading = false);
+      debugPrint('Error horas: $e');
+
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
-  Future<void> _reservar() async {
+  // ============================================================
+  // RESERVAR
+  // ============================================================
 
+  Future<void> _reservar() async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (_selectedDay == null ||
-        _horaSeleccionada.isEmpty ||
-        _claseSeleccionada.isEmpty) {
+        _claseSeleccionada.isEmpty ||
+        _horaSeleccionada.isEmpty) {
       _mostrarMensaje('Completa todos los campos');
       return;
     }
 
-    final fechaBase = DateTime(
-      _selectedDay!.year,
-      _selectedDay!.month,
-      _selectedDay!.day,
-    );
-
-    final partesHora = _horaSeleccionada.split(':');
-
-    final fechaHora = DateTime(
-      fechaBase.year,
-      fechaBase.month,
-      fechaBase.day,
-      int.parse(partesHora[0]),
-      int.parse(partesHora[1]),
-    );
-
     setState(() => _loading = true);
 
     try {
+      // ========================================================
+      // OBTENER DOCUMENTO DE CLASE
+      // ========================================================
 
-       final claseDoc = await FirebaseFirestore.instance
-        .collection('clases')
-        .doc(_claseSeleccionada)
-        .get();
+      final claseDoc = await _db
+          .collection(_kColeccionClases)
+          .doc(_claseSeleccionada)
+          .get();
 
-    if (!claseDoc.exists) {
-      throw Exception('La clase no existe');
-    }
+      // ========================================================
+      // COMPROBAR QUE EXISTE
+      // ========================================================
 
-    final employeeID = claseDoc.data()?['employeeID'];
+      if (!claseDoc.exists) {
+        throw Exception('La clase no existe');
+      }
 
-    if (employeeID == null || employeeID.toString().isEmpty) {
-      throw Exception('La clase no tiene employeeID asignado');
-    }
+      // ========================================================
+      // OBTENER EMPLOYEE ID
+      // ========================================================
 
-      await _db.runTransaction((transaction) async {
-        final reservasRef = _db.collection(_kColeccion);
+      final employeeID = claseDoc.data()?['employeeID'];
 
-        final userQuery = await reservasRef
+      // ========================================================
+      // VALIDAR PROFESOR ASIGNADO
+      // ========================================================
+
+      if (employeeID == null || employeeID.toString().trim().isEmpty) {
+        throw Exception('Esta clase todavía no tiene profesor asignado');
+      }
+
+      // ========================================================
+      // FECHA BASE
+      // ========================================================
+
+      final fechaBase = DateTime(
+        _selectedDay!.year,
+        _selectedDay!.month,
+        _selectedDay!.day,
+      );
+
+      final partesHora = _horaSeleccionada.split(':');
+
+      final fechaHora = DateTime(
+        fechaBase.year,
+        fechaBase.month,
+        fechaBase.day,
+        int.parse(partesHora[0]),
+        int.parse(partesHora[1]),
+      );
+
+      // ========================================================
+      // TRANSACCIÓN
+      // ========================================================
+
+      final reservasRef = _db.collection(_kColeccionReservas);
+
+        //
+        // VALIDAR RESERVAS ACTIVAS USUARIO
+        //
+
+        final userReservas = await reservasRef
             .where('userId', isEqualTo: widget.userId)
-            .where('estado', isEqualTo: 'activa')
+            .where('negocioRef', isEqualTo: negocioRef)
+            .where('estado', isEqualTo: _kEstadoActiva)
             .get();
 
-        if (userQuery.docs.length >= _kMaxReservas) {
-          throw Exception('Máximo $_kMaxReservas reservas activas');
+        if (userReservas.docs.length >= _kMaxReservasYoga) {
+
+          _mostrarMensaje(
+            'Ya tienes 5 reservas activas en Yoga',
+          );
+
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+
+          return;
         }
 
-        final slotQuery = await reservasRef
-            .where(_kCampoNegocioRef, isEqualTo: negocioRef)
-            .where(_kCampoFecha, isEqualTo: Timestamp.fromDate(fechaBase))
-            .where(_kCampoHora, isEqualTo: _horaSeleccionada)
-            .where(_kCampoEstado, isEqualTo: _kEstadoActiva)
+        //
+        // RESERVAS DEL DÍA
+        //
+
+        final reservasDia = await reservasRef
+            .where('negocioRef', isEqualTo: negocioRef)
+            .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
+            .where('estado', isEqualTo: _kEstadoActiva)
             .get();
-        if (slotQuery.docs.length >= _kMaxPorHora) {
-          throw Exception('Cupo completo para esta hora');
+
+        //
+        // YA TIENE ESA HORA
+        //
+
+        final yaTieneHora = reservasDia.docs.any((doc) {
+          return doc['userId'] == widget.userId &&
+              doc['hora'] == _horaSeleccionada;
+        });
+
+        if (yaTieneHora) {
+
+          _mostrarMensaje(
+            'Ya tienes una reserva a esa hora',
+          );
+
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+
+          return;
         }
 
-        final yaReservado = slotQuery.docs.any(
-          (doc) => doc['userId'] == widget.userId,
-        );
+        //
+        // CLASE COMPLETA
+        //
 
-        if (yaReservado) {
-          throw Exception('Ya tienes una reserva en este horario');
+        final reservasClaseHora = reservasDia.docs.where((doc) {
+          return doc['claseNombre'] == _claseSeleccionada &&
+              doc['hora'] == _horaSeleccionada;
+        }).toList();
+
+        if (reservasClaseHora.length >= _kMaxPorClaseHora) {
+
+          _mostrarMensaje(
+            'La clase está completa',
+          );
+
+          if (mounted) {
+            setState(() => _loading = false);
+          }
+
+          return;
         }
 
-        final docRef = reservasRef.doc();
-        
+        //
+        // CREAR RESERVA
+        //
 
-        transaction.set(docRef, {
-          _kCampoUserId: widget.userId,
+        final nuevaReserva = reservasRef.doc();
+
+        await nuevaReserva.set({
+          // ====================================================
+          // USUARIO
+          // ====================================================
+          'userId': widget.userId,
+
+          'cliente': user?.displayName?.isNotEmpty == true
+              ? user!.displayName
+              : user?.email ?? 'Usuario desconocido',
+
+          // ====================================================
+          // NEGOCIO
+          // ====================================================
+          'negocioNombre': widget.negocio,
 
           'negocioRef': negocioRef,
-          'negocioNombre': widget.negocio,
-          
-          'cliente': user?.displayName?.isNotEmpty == true
-            ? user!.displayName
-            : user?.email ?? 'Usuario desconocido',
 
+          // ====================================================
+          // CLASE
+          // ====================================================
           'claseNombre': _claseSeleccionada,
 
-           'employeeID': employeeID,
+          'claseRef': _db.collection(_kColeccionClases).doc(_claseSeleccionada),
 
-          'claseRef': FirebaseFirestore.instance
-              .collection('clases')
-              .doc(_claseSeleccionada),
+          // ====================================================
+          // EMPLEADO
+          // ====================================================
+          'employeeID': employeeID,
 
+          // ====================================================
+          // FECHAS
+          // ====================================================
           'fecha': Timestamp.fromDate(fechaBase),
-          'hora': _horaSeleccionada,
+
           'fechaHora': Timestamp.fromDate(fechaHora),
 
-          'estado': 'activa',
+          'hora': _horaSeleccionada,
+
+          // ====================================================
+          // ESTADO
+          // ====================================================
+          'estado': _kEstadoActiva,
+
+          // ====================================================
+          // TIMESTAMP CREACIÓN
+          // ====================================================
           'timestamp': FieldValue.serverTimestamp(),
         });
-      });
+
+      // ========================================================
+      // MENSAJE OK
+      // ========================================================
 
       _mostrarMensaje('Reserva confirmada');
 
-      await _fetchBlockedDays();
+      // ========================================================
+      // RECARGAR DATOS
+      // ========================================================
 
-      setState(() {
-        _selectedDay = null;
-        _horaSeleccionada = '';
-        _claseSeleccionada = '';
-        _horasDisponibles = List.from(horariosTotales);
-      });
+      await _cargarEstadoDias();
+
+      await _actualizarHorasDisponibles();
+
+      // ========================================================
+      // RESET UI
+      // ========================================================
+
+      if (mounted) {
+        setState(() {
+          _horaSeleccionada = '';
+        });
+      }
     } catch (e) {
-      _mostrarMensaje(e.toString().replaceAll('Exception: ', ''));
+      String errorTexto = e.toString();
+
+      errorTexto = errorTexto.replaceFirst('Exception: ', '');
+
+      errorTexto = errorTexto.replaceAll(RegExp(r'\[.*?\]'), '');
+
+      errorTexto = errorTexto.trim();
+
+      _mostrarMensaje(errorTexto);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
-  void _mostrarMensaje(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
-      );
+  // ============================================================
+  // MENSAJES
+  // ============================================================
+
+  void _mostrarMensaje(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
 
+      // ========================================================
+      // APPBAR
+      // ========================================================
       appBar: AppBar(
         title: Text(
           widget.negocio,
@@ -285,6 +606,7 @@ class _YogaPageState extends State<YogaPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -296,12 +618,16 @@ class _YogaPageState extends State<YogaPage> {
         ),
       ),
 
+      // ========================================================
+      // BODY
+      // ========================================================
       body: Container(
         width: double.infinity,
         height: double.infinity,
+
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFF5F5F5), Color.fromARGB(255, 99, 238, 196), Color.fromARGB(255, 6, 212, 151)],
+            colors: [Color(0xFFF5F5F5), Color.fromARGB(255, 77, 255, 202), Color.fromARGB(255, 0, 245, 163)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -309,27 +635,35 @@ class _YogaPageState extends State<YogaPage> {
 
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24),
+
             child: Center(
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 450),
+
                 child: Column(
                   children: [
+                    // ====================================================
+                    // LOGO
+                    // ====================================================
                     Image.asset(
                       'assets/images/LogoAlphaAppYoga.png',
                       width: screenWidth * 0.9,
                       height: 120,
                       fit: BoxFit.contain,
                     ),
+
                     const SizedBox(height: 20),
 
+                    // ====================================================
+                    // CALENDARIO
+                    // ====================================================
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.7),
+
                         borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
+
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.08),
@@ -338,68 +672,95 @@ class _YogaPageState extends State<YogaPage> {
                           ),
                         ],
                       ),
+
                       child: TableCalendar(
                         locale: 'es_ES',
+
                         startingDayOfWeek: StartingDayOfWeek.monday,
+
                         firstDay: DateTime.now(),
+
                         lastDay: DateTime.now().add(const Duration(days: 365)),
-                        focusedDay: _focusedDay,
-                        selectedDayPredicate: (day) =>
-                            isSameDay(_selectedDay, day),
-                        onDaySelected: (selected, focused) {
-                          setState(() {
-                            _selectedDay = selected;
-                            _focusedDay = focused;
-                          });
-                          _actualizarHorasDisponibles();
-                        },
-                        headerStyle: const HeaderStyle(
-                          formatButtonVisible: false,
-                          titleCentered: true,
-                          leftChevronIcon: Icon(
-                            Icons.chevron_left,
-                            color: Colors.black,
+                        calendarStyle: CalendarStyle(
+                          todayDecoration: BoxDecoration(
+                            color: Color.fromARGB(255, 38, 255, 190),
+                            shape: BoxShape.circle,
                           ),
-                          rightChevronIcon: Icon(
-                            Icons.chevron_right,
-                            color: Colors.black,
+
+                          todayTextStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         daysOfWeekStyle: const DaysOfWeekStyle(
                           weekdayStyle: TextStyle(
-                            color: Color.fromARGB(255, 8, 204, 129),
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 3, 204, 144), // color naranja para días de semana
+                            fontWeight: FontWeight.w600,
+                          ),
+
+                          weekendStyle: TextStyle(
+                            color: Color.fromARGB(255, 0, 245, 172), // sábado igual que los días de semana
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        calendarStyle: const CalendarStyle(
-                          defaultTextStyle: TextStyle(
-                            color: Color.fromARGB(255, 0, 0, 0),
-                          ),
-                          selectedDecoration: BoxDecoration(
-                            color: Colors.blueAccent,
-                            shape: BoxShape.circle,
-                          ),
-                          todayDecoration: BoxDecoration(
-                            color: Color.fromARGB(255, 10, 212, 179),
-                            shape: BoxShape.circle,
-                          ),
+
+                        focusedDay: _focusedDay,
+
+                        enabledDayPredicate: (day) {
+                          return day.weekday != DateTime.sunday;
+                        },
+
+                        selectedDayPredicate: (day) =>
+                            isSameDay(_selectedDay, day),
+
+                        onPageChanged: (focusedDay) {
+                          _focusedDay = focusedDay;
+                          _cargarEstadoDias();
+                        },
+
+                        onDaySelected: (selectedDay, focusedDay) {
+                          setState(() {
+                            _selectedDay = selectedDay;
+
+                            _focusedDay = focusedDay;
+                          });
+
+                          _actualizarHorasDisponibles();
+                        },
+
+                        headerStyle: const HeaderStyle(
+                          formatButtonVisible: false,
+                          titleCentered: true,
                         ),
+
                         calendarBuilders: CalendarBuilders(
                           markerBuilder: (context, date, events) {
-                            if (_blockedDays.any((d) => isSameDay(d, date))) {
-                              return Positioned(
-                                bottom: 6,
-                                child: Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              );
+                            final estado = _estadoDias.entries
+                                .where((e) => isSameDay(e.key, date))
+                                .map((e) => e.value)
+                                .firstOrNull;
+
+                            if (estado == null) {
+                              return null;
                             }
-                            return null;
+
+                            Color color = const Color.fromARGB(255, 0, 255, 157);
+
+                            if (estado == 'verde') {
+                              color = Colors.green;
+                            }
+
+                            return Positioned(
+                              bottom: 6,
+                              child: Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ),
@@ -407,65 +768,49 @@ class _YogaPageState extends State<YogaPage> {
 
                     const SizedBox(height: 30),
 
+                    // ====================================================
+                    // DROPDOWN CLASES
+                    // ====================================================
                     Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
                       ),
+
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.6),
+
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        alignment: AlignmentDirectional.center,
+
                         initialValue: _claseSeleccionada.isEmpty
                             ? null
                             : _claseSeleccionada,
+
                         decoration: const InputDecoration(
-                          labelText: 'Selecciona Materia',
-                          labelStyle: TextStyle(color: Colors.black87),
-                          floatingLabelStyle: TextStyle(color: Colors.black),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
+                          labelText: 'Selecciona Clase',
                         ),
-                        selectedItemBuilder: (context) {
-                          return clases.map((c) {
-                            return Center(
-                              child: Text(
-                                c,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.black),
-                              ),
-                            );
-                          }).toList();
-                        },
-                        icon: const Icon(
-                          Icons.arrow_drop_down,
-                          color: Colors.black,
-                        ),
-                        dropdownColor: Colors.white.withValues(alpha: 0.95),
-                        items: clases.map((c) {
+
+                        items: _clases.map((clase) {
                           return DropdownMenuItem(
-                            value: c,
-                            child: Center(child: Text(c)),
+                            value: clase,
+                            child: Center(child: Text(clase)),
                           );
                         }).toList(),
-                        onChanged: (val) {
-                          setState(() => _claseSeleccionada = val!);
+
+                        onChanged: (value) {
+                          setState(() {
+                            _claseSeleccionada = value!;
+                          });
+
                           _actualizarHorasDisponibles();
                         },
                       ),
@@ -473,102 +818,87 @@ class _YogaPageState extends State<YogaPage> {
 
                     const SizedBox(height: 15),
 
+                    // ====================================================
+                    // DROPDOWN HORAS
+                    // ====================================================
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 14,
                       ),
+
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.6),
+
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
                       ),
+
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        alignment: AlignmentDirectional.center,
+
                         initialValue: _horaSeleccionada.isEmpty
                             ? null
                             : _horaSeleccionada,
+
                         decoration: const InputDecoration(
-                          labelText: 'Hora disponible',
-                          labelStyle: TextStyle(color: Colors.black87),
-                          floatingLabelStyle: TextStyle(color: Colors.black),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          isCollapsed: true,
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
+                          labelText: 'Selecciona Hora',
                         ),
-                        icon: const Icon(
-                          Icons.arrow_drop_down,
-                          color: Colors.black,
-                        ),
-                        selectedItemBuilder: (context) {
-                          return _horasDisponibles.map((h) {
-                            return Center(
-                              child: Text(
-                                h,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.black),
-                              ),
-                            );
-                          }).toList();
-                        },
-                        dropdownColor: Colors.white.withValues(alpha: 0.95),
+
                         items: _horasDisponibles.map((h) {
-                          return DropdownMenuItem(
-                            value: h,
-                            child: Center(child: Text(h)),
+                          return DropdownMenuItem<String>(
+                            value: h['hora'] as String,
+                            enabled: !(h['llena'] as bool),
+                            child: Center(child: Text(h['texto'] as String)),
                           );
                         }).toList(),
-                        onChanged: _selectedDay == null
-                            ? null
-                            : (val) => setState(() => _horaSeleccionada = val!),
+
+                        onChanged: (value) {
+                          setState(() {
+                            _horaSeleccionada = value!;
+                          });
+                        },
                       ),
                     ),
 
                     const SizedBox(height: 35),
 
+                    // ====================================================
+                    // BOTÓN RESERVAR
+                    // ====================================================
                     SizedBox(
                       width: screenWidth * 0.7,
                       height: 55,
+
                       child: ElevatedButton(
                         onPressed: _loading ? null : _reservar,
+
                         style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.zero,
                           backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
                           shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          padding: EdgeInsets.zero,
                         ),
+
                         child: Ink(
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [
                                 Color(0xFF1E293B),
-                                Color(0xFF334155),
-                                Color(0xFF64B5F6),
+                                Color.fromARGB(255, 11, 51, 54),
+                                Color.fromARGB(255, 12, 190, 176),
                               ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
                             ),
+
                             borderRadius: BorderRadius.circular(30),
                           ),
+
                           child: Container(
                             alignment: Alignment.center,
-                            height: 55,
+
                             child: _loading
                                 ? const CircularProgressIndicator(
                                     color: Colors.white,
@@ -576,15 +906,15 @@ class _YogaPageState extends State<YogaPage> {
                                 : const Text(
                                     'RESERVAR',
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
                                       color: Colors.white,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                           ),
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 30),
                   ],
                 ),
