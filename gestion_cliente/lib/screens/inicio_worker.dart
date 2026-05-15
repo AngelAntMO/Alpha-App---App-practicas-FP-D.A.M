@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 import 'package:gestion_cliente/screens/agendaworker_screen.dart';
 import 'profile_worker.dart';
 import 'package:gestion_cliente/screens/worker_check_screen.dart';
@@ -20,7 +20,7 @@ class _InicioWorkerState extends State<InicioWorker>
 
   bool _hasNewReservas = false;
   int _previousCount = 0;
-
+  StreamSubscription? _reservasSubscription;
 
   late AnimationController _controller;
   late Animation<double> _scaleAnim;
@@ -43,10 +43,12 @@ void initState() {
 }
 
 void _listenReservas() {
-  FirebaseFirestore.instance
+  _reservasSubscription = FirebaseFirestore.instance
       .collection('reservas')
       .snapshots()
       .listen((snapshot) {
+
+    if (!mounted) return;
 
     int currentCount = snapshot.docs.length;
 
@@ -61,10 +63,11 @@ void _listenReservas() {
 }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+void dispose() {
+  _reservasSubscription?.cancel();
+  _controller.dispose();
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
