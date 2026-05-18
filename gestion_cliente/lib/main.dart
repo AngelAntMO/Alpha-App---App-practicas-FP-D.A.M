@@ -83,35 +83,41 @@ class AlphaApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.delayed(const Duration(seconds: 3), () {
+      setState(() {
+        showSplash = false;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // MIENTRAS CARGA FIREBASE: Mostramos un fondo oscuro (adiós flash blanco)
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF1E293B),
-            body: Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF64B5F6),
-              ),
-            ),
-          );
+          return const SplashScreen();
         }
 
-        // CASO A: USUARIO LOGUEADO
-        // Entra directamente a la App sin pasar por el Splash de 3 segundos.
-        if (snapshot.hasData) {
-          return const RootPage(); 
+        if (!snapshot.hasData) {
+          return showSplash ? const SplashScreen() : const LoginPage();
         }
 
-        // CASO B: USUARIO NO LOGUEADO
-        // Mostramos tu SplashScreen animado antes de que vaya al Login.
-        return const SplashScreen();
+        return const RootPage();
       },
     );
   }
