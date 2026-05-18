@@ -108,6 +108,16 @@ class WorkerProfilePage extends StatelessWidget {
                     },
                   ),
 
+                  AnimatedMenuButton(
+                    icon: Icons.email_outlined,
+                    title: "Contactar administrador",
+                    onTap: () {
+                      if (user != null) {
+                        _showContactAdmin(context, user.uid);
+                     }
+                    },
+                  ),
+
                   const SizedBox(height: 25),
 
                   const Padding(
@@ -468,6 +478,118 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
+     void _showContactAdmin(BuildContext context, String uid) async {
+  final subjectController = TextEditingController();
+  final messageController = TextEditingController();
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return Container(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F172A),
+              Color(0xFF1E293B),
+              Color(0xFF334155),
+            ],
+          ),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(30),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Enviar correo al administrador",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            _buildInput(subjectController, "Asunto"),
+
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextField(
+                controller: messageController,
+                maxLines: 5,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: "Escribe tu mensaje...",
+                  hintStyle:
+                      const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor:
+                      Colors.white.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.send),
+                label: const Text("Enviar correo"),
+                onPressed: () async {
+                  if (subjectController.text.trim().isEmpty ||
+                      messageController.text.trim().isEmpty) {
+                    return;
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('emails_admin')
+                      .add({
+                    'workerId': uid,
+                    'subject':
+                        subjectController.text.trim(),
+                    'message':
+                        messageController.text.trim(),
+                    'createdAt':
+                        FieldValue.serverTimestamp(),
+                    'status': 'pendiente',
+                  });
+
+                  if (!context.mounted) return;
+
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Correo enviado al administrador",
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
   void _showCheckHistory(BuildContext context, String uid) {
     showModalBottomSheet(
       context: context,
@@ -494,6 +616,9 @@ class WorkerProfilePage extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
 
+
+
+           
               final docs = snapshot.data!.docs;
 
               return ListView.builder(
