@@ -25,6 +25,7 @@ class _DashboardPageState extends State<DashboardPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _currentIndex = 0;
+  String? _negocioSeleccionado;
 
   // 1. MAPA DE FACTORÍA: Asocia el nombre con el Widget de destino
   final Map<String, Widget Function(String uid, String nombre)> paginasServicios = {
@@ -286,42 +287,143 @@ onTapCancel: () => setState(() {
     final reservasQuery = FirebaseFirestore.instance
         .collection('reservas')
         .where('userId', isEqualTo: user.uid)
-        .where('estado', isEqualTo: 'activa');
+        .where('estado', isEqualTo: 'activa')
+        .orderBy('fechaHora', descending: false);
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: reservasQuery.snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Color(0xFF64B5F6)));
         final reservas = snapshot.data!.docs;
-        if (reservas.isEmpty) return const Center(child: Text('No tienes reservas activas', style: TextStyle(color: Colors.white)));
+        
+        final reservasFiltradas = _negocioSeleccionado == null 
+            ? reservas 
+            : reservas.where((doc) => doc['negocioNombre'] == _negocioSeleccionado).toList();
+            
+        if (reservas.isEmpty) return const Center(child: Text('No tienes reservas activas', style: TextStyle(color: Colors.blueGrey, fontSize: 16)));
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: reservas.length,
-          itemBuilder: (context, index) {
-            final data = reservas[index].data();
-            final docId = reservas[index].id;
-            return Center(
-              child: SizedBox(
-                width: screenWidth > 800 ? 500 : screenWidth * 0.95,
-                child: Card(
-                  color: const Color(0xFF93C5FD),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  child: ListTile(
-                    title: Text('${data['negocioNombre']}'),
-                    subtitle: Text('${data['claseNombre']}\n📅 ${DateFormat('dd/MM/yyyy').format((data['fecha'] as Timestamp).toDate())}\n⏰ ${data['hora']}'),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _confirmarEliminacion(docId),
+        return Column(
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // OPCIÓN "TODOS"
+                  FilterChip(
+                    label: const Text('Todos'),
+                    selected: _negocioSeleccionado == null,
+                    onSelected: (_) => setState(() => _negocioSeleccionado = null),
+                    backgroundColor: Colors.transparent,
+                    selectedColor: const Color(0xFF64B5F6).withValues(alpha: 0.3),
+                    checkmarkColor: const Color(0xFF1E293B),
+                    labelStyle: TextStyle(
+                      color: _negocioSeleccionado == null ? Colors.black : const Color(0xFF1E293B),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  
+                  // LAS OPCIONES DINÁMICAS
+                  ...widget.negocios.map((nombreNegocio) {
+                    final bool isSelected = _negocioSeleccionado == nombreNegocio;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(nombreNegocio), 
+                        selected: isSelected,
+                        onSelected: (bool seleccionado) {
+                          setState(() {
+                            _negocioSeleccionado = seleccionado ? nombreNegocio : null;
+                          });
+                        },
+                        backgroundColor: Colors.transparent,
+                        selectedColor: const Color(0xFF64B5F6),
+                        // CAMBIO: Azul oscuro cuando no está seleccionado
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.black : const Color(0xFF1E293B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+
+            // EL CHIVATO (Ahora siempre visible sin el IF externo)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12, top: 4),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                child: Row(
+                  key: ValueKey(_negocioSeleccionado), 
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _negocioSeleccionado == null ? Icons.all_inbox_rounded : Icons.auto_awesome,
+                      size: 16,
+                      color: _negocioSeleccionado == null ? const Color(0xFFFFD700) : const Color(0xFFFFD700),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _negocioSeleccionado == null 
+                          ? "Mostrando todas tus reservas" 
+                          : "Filtrando por: $_negocioSeleccionado",
+                      style: const TextStyle(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (_negocioSeleccionado != null) ...[
+                      const SizedBox(width: 8),
+                      const Icon(Icons.auto_awesome, size: 16, color: Colors.amber),
+                    ]
+                  ],
                 ),
               ),
-            );
-          },
-        );
-        
+            ),
 
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: reservasFiltradas.length,
+                itemBuilder: (context, index) {
+                  final data = reservasFiltradas[index].data();
+                  final docId = reservasFiltradas[index].id;
+                  return Center(
+                    child: SizedBox(
+                      width: screenWidth > 800 ? 500 : screenWidth * 0.95,
+                      child: Card(
+                        color: const Color(0xFF93C5FD),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        child: ListTile(
+                          visualDensity: const VisualDensity(vertical: -3),
+                          title: Row(
+                            children: [
+                              Icon(getIcono(data['negocioNombre']), size: 19, color: Colors.black54),
+                              const SizedBox(width: 8),
+                              Text('${data['negocioNombre']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          subtitle: Text(
+                              '☑️ ${data['claseNombre']}\n📅 ${DateFormat('dd/MM/yyyy').format((data['fecha'] as Timestamp).toDate())}   🕒 ${data['hora']}',
+                              style: const TextStyle(color: Colors.black87, fontSize: 15),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _confirmarEliminacion(docId),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
       },
     );
   }
