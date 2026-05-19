@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:gestion_cliente/screens/admin_servicios.dart';
 
 class InicioAdmin extends StatefulWidget {
   const InicioAdmin({super.key});
@@ -297,7 +298,11 @@ class _InicioAdminState extends State<InicioAdmin>
                               child: _AdminCard(
                                 icon: Icons.business,
                                 title: "Servicios",
-                                onTap: () {},
+                                onTap: () {
+                                  Navigator.push(context,
+                                    MaterialPageRoute(builder: (context) => const GestionNegocioAdmin())
+                                  );
+                                },
                               ),
                             ),
                           ),
