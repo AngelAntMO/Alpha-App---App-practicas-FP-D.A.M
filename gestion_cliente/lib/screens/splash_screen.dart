@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:gestion_cliente/screens/root_page.dart';
+
+//Pantalla de carga falsa, es solo estetica, solo se ve al iniciar la App sin una sesión ya abierta.
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -53,13 +54,6 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     _controller.forward();
-
-    _cargarApp();
-  }
-
-  Future<void> _cargarApp() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
 
     
   }

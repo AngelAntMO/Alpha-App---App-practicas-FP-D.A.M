@@ -2,8 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-
-// Importaciones de tus pantallas
 import 'package:gestion_cliente/core/app_themes.dart';
 import 'package:gestion_cliente/screens/splash_screen.dart';
 import 'package:gestion_cliente/screens/login_screen.dart';
@@ -40,12 +38,12 @@ class AlphaApp extends StatelessWidget {
       title: 'AlphaApp',
       debugShowCheckedModeBanner: false,
       
-      // 1. EL TEMA: Forzamos el color oscuro de fondo para evitar el flash blanco
+      
       theme: AppThemes.inicioTheme.copyWith(
         scaffoldBackgroundColor: const Color(0xFF1E293B),
       ),
       
-      // 2. EL HOME: Ahora el AuthWrapper decide qué pantalla mostrar
+      //  El AuthWrapper decide qué pantalla mostrar
       home: const AuthWrapper(),
 
       routes: {
@@ -91,33 +89,44 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  bool showSplash = true;
+  late Future<void> _startup;
 
   @override
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      setState(() {
-        showSplash = false;
-      });
-    });
+    _startup = Future.delayed(
+      const Duration(seconds: 2),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return FutureBuilder(
+      future: _startup,
+      builder: (context, splashSnapshot) {
+
+        // Mientras dura el splash
+        if (splashSnapshot.connectionState != ConnectionState.done) {
           return const SplashScreen();
         }
 
-        if (!snapshot.hasData) {
-          return showSplash ? const SplashScreen() : const LoginPage();
-        }
+        // Después del splash escucha auth
+        return StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, authSnapshot) {
 
-        return const RootPage();
+            if (authSnapshot.connectionState == ConnectionState.waiting) {
+              return const SplashScreen();
+            }
+
+            if (!authSnapshot.hasData) {
+              return const LoginPage();
+            }
+
+            return const RootPage();
+          },
+        );
       },
     );
   }

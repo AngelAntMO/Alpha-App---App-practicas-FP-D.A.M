@@ -134,8 +134,10 @@ class _InicioAdminState extends State<InicioAdmin>
 
     // pequeño delay para que entre después del logo
     Future.delayed(const Duration(milliseconds: 600), () {
-      _titleController.forward();
-    });
+  if (mounted) {
+    _titleController.forward();
+  }
+});
   }
 
   // Esto es para liberar memoria y evitar la estupenda ventana roja de error de flutter.
@@ -146,6 +148,7 @@ class _InicioAdminState extends State<InicioAdmin>
     _waveController.dispose();
     _entryController.dispose();
     _titleController.dispose();
+    _cardController.dispose();
     super.dispose();
   }
 
