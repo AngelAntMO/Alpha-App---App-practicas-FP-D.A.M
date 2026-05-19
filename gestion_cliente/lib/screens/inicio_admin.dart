@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'profile_admin.dart';
 
 class InicioAdmin extends StatefulWidget {
   const InicioAdmin({super.key});
@@ -77,8 +78,8 @@ class _InicioAdminState extends State<InicioAdmin>
 
     _glowColorAnimation =
         ColorTween(
-          begin: const Color(0xFF2563EB), 
-          end: const Color(0xFF60A5FA), 
+          begin: const Color(0xFF2563EB),
+          end: const Color(0xFF60A5FA),
         ).animate(
           CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
         );
@@ -134,10 +135,10 @@ class _InicioAdminState extends State<InicioAdmin>
 
     // pequeño delay para que entre después del logo
     Future.delayed(const Duration(milliseconds: 600), () {
-  if (mounted) {
-    _titleController.forward();
-  }
-});
+      if (mounted) {
+        _titleController.forward();
+      }
+    });
   }
 
   // Esto es para liberar memoria y evitar la estupenda ventana roja de error de flutter.
@@ -169,15 +170,6 @@ class _InicioAdminState extends State<InicioAdmin>
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: const Text("Panel Administrador"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              color: Colors.white,
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-              },
-            ),
-          ],
         ),
 
         body: Padding(
@@ -195,7 +187,6 @@ class _InicioAdminState extends State<InicioAdmin>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          
                           AnimatedBuilder(
                             animation: _waveAnimation,
                             builder: (context, child) {
@@ -215,7 +206,6 @@ class _InicioAdminState extends State<InicioAdmin>
                             },
                           ),
 
-                          
                           AnimatedBuilder(
                             animation: Listenable.merge([
                               _animation,
@@ -269,7 +259,6 @@ class _InicioAdminState extends State<InicioAdmin>
                   ),
                   const SizedBox(height: 35),
 
-                  
                   Expanded(
                     child: Row(
                       children: [
@@ -311,9 +300,16 @@ class _InicioAdminState extends State<InicioAdmin>
                             child: SlideTransition(
                               position: _cardSlideAnimations[2],
                               child: _AdminCard(
-                                icon: Icons.settings,
-                                title: "Configuración",
-                                onTap: () {},
+                                icon: Icons.account_circle,
+                                title: "Perfil",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProfileAdmin(),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),
