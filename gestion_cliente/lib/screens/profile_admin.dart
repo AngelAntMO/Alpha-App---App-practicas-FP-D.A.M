@@ -2,11 +2,10 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gestion_cliente/screens/inicio_worker.dart';
 import 'root_page.dart';
 
-class WorkerProfilePage extends StatelessWidget {
-  const WorkerProfilePage({super.key});
+class ProfileAdmin extends StatelessWidget {
+  const ProfileAdmin({super.key});
 
   final List<String> avatarOptions = const [
     "assets/images/moureperfil.png",
@@ -42,17 +41,13 @@ class WorkerProfilePage extends StatelessWidget {
           elevation: 0,
           centerTitle: true,
           title: const Text(
-            "Perfil trabajador",
+            "Perfil Administrador",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => InicioWorker()),
-                (route) => false,
-              );
+              Navigator.pop(context);
             },
           ),
         ),
@@ -73,14 +68,14 @@ class WorkerProfilePage extends StatelessWidget {
                     title: "Editar perfil",
                     onTap: () {
                       if (user != null) {
-                        _showEditWorkerProfile(context, user.uid);
+                        _showEditAdminProfile(context, user.uid);
                       }
                     },
                   ),
 
                   AnimatedMenuButton(
-                    icon: Icons.calendar_month,
-                    title: "Mis horarios",
+                    icon: Icons.chat_bubble_outline,
+                    title: "Mis mensajes",
                     onTap: () {
                       if (user != null) {
                         _showSchedules(context, user.uid);
@@ -263,7 +258,7 @@ class WorkerProfilePage extends StatelessWidget {
                   SizedBox(width: 8),
 
                   Text(
-                    "Trabajador activo",
+                    "Administrador activo",
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
@@ -319,7 +314,7 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showEditWorkerProfile(BuildContext context, String uid) async {
+  void _showEditAdminProfile(BuildContext context, String uid) async {
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -410,7 +405,7 @@ class WorkerProfilePage extends StatelessWidget {
           ),
           child: const Center(
             child: Text(
-              "Aquí aparecerán los horarios",
+              "Aquí aparecerán los mensajes",
               style: TextStyle(color: Colors.white),
             ),
           ),
