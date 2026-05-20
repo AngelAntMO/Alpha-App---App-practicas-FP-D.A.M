@@ -11,17 +11,28 @@ class RootPage extends StatelessWidget {
   const RootPage({super.key});
 
   Future<Widget> _getHome(User user) async {
+  try {
+    final uid = user.uid;
+
     final doc = await FirebaseFirestore.instance
         .collection('users')
-        .doc(user.uid)
+        .doc(uid)
         .get();
 
     if (!doc.exists) {
       return const LoginPage();
     }
 
-    final data = doc.data() as Map<String, dynamic>;
-    final role = (data['rol'] ?? 'client').toString().trim().toLowerCase();
+    final data = doc.data();
+
+    if (data == null) {
+      return const LoginPage();
+    }
+
+    final role = (data['rol'] ?? 'usuario')
+        .toString()
+        .trim()
+        .toLowerCase();
 
     switch (role) {
       case 'worker':
@@ -36,7 +47,11 @@ class RootPage extends StatelessWidget {
       default:
         return const PaginaInicio();
     }
+  } catch (e) {
+    debugPrint("Error obteniendo rol: $e");
+    return const LoginPage();
   }
+}
 
   @override
   Widget build(BuildContext context) {

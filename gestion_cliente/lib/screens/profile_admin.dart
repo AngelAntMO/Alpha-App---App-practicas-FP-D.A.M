@@ -2,11 +2,10 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gestion_cliente/screens/inicio_worker.dart';
 import 'root_page.dart';
 
-class WorkerProfilePage extends StatelessWidget {
-  const WorkerProfilePage({super.key});
+class ProfileAdmin extends StatelessWidget {
+  const ProfileAdmin({super.key});
 
   final List<String> avatarOptions = const [
     "assets/images/moureperfil.png",
@@ -42,17 +41,13 @@ class WorkerProfilePage extends StatelessWidget {
           elevation: 0,
           centerTitle: true,
           title: const Text(
-            "Perfil trabajador",
+            "Perfil Administrador",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => InicioWorker()),
-                (route) => false,
-              );
+              Navigator.pop(context);
             },
           ),
         ),
@@ -73,21 +68,21 @@ class WorkerProfilePage extends StatelessWidget {
                     title: "Editar perfil",
                     onTap: () {
                       if (user != null) {
-                        _showEditWorkerProfile(context, user.uid);
+                        _showEditAdminProfile(context, user.uid);
                       }
                     },
                   ),
 
-                 AnimatedMenuButton(
-                    icon: Icons.mail_outline,
+                  AnimatedMenuButton(
+                    icon: Icons.chat_bubble_outline,
                     title: "Mis mensajes",
                     onTap: () {
                       if (user != null) {
-                        _showInternalMessages(context, user.uid);
+                        _showSchedules(context, user.uid);
                       }
                     },
                   ),
-                  
+
                   AnimatedMenuButton(
                     icon: Icons.work_outline,
                     title: "Mis tareas",
@@ -97,28 +92,6 @@ class WorkerProfilePage extends StatelessWidget {
                       }
                     },
                   ),
-
-                  AnimatedMenuButton(
-                    icon: Icons.history,
-                    title: "Historial de fichajes",
-                    onTap: () {
-                      if (user != null) {
-                        _showCheckHistory(context, user.uid);
-                      }
-                    },
-                  ),
-
-                  AnimatedMenuButton(
-                    icon: Icons.email_outlined,
-                    title: "Contactar administrador",
-                    onTap: () {
-                      if (user != null) {
-                        _showContactAdmin(context, user.uid);
-                     }
-                    },
-                  ),
-
-                  const SizedBox(height: 25),
 
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 40),
@@ -285,7 +258,7 @@ class WorkerProfilePage extends StatelessWidget {
                   SizedBox(width: 8),
 
                   Text(
-                    "Trabajador activo",
+                    "Administrador activo",
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
@@ -341,7 +314,7 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showEditWorkerProfile(BuildContext context, String uid) async {
+  void _showEditAdminProfile(BuildContext context, String uid) async {
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -417,136 +390,29 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showInternalMessages(BuildContext context, String uid) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (context) {
-      return Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E293B),
-              Color(0xFF334155),
-            ],
+  void _showSchedules(BuildContext context, String uid) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: 400,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(30),
+          child: const Center(
+            child: Text(
+              "Aquí aparecerán los mensajes",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
-        ),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('workers')
-              .doc(uid)
-              .collection('mensajes')
-              .orderBy('createdAt', descending: true)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            final docs = snapshot.data!.docs;
-
-            if (docs.isEmpty) {
-              return const Center(
-                child: Text(
-                  "No tienes mensajes",
-                  style: TextStyle(color: Colors.white70),
-                ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: docs.length,
-              itemBuilder: (context, index) {
-                final data =
-                    docs[index].data() as Map<String, dynamic>;
-
-                final asunto = data['asunto'] ?? 'Sin asunto';
-                final mensaje = data['mensaje'] ?? '';
-                final remitente = data['remitente'] ?? 'Administrador';
-
-                DateTime? fecha;
-
-                if (data['createdAt'] != null) {
-                  fecha =
-                      (data['createdAt'] as Timestamp).toDate();
-                }
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFF64B5F6),
-                      child: Icon(
-                        Icons.mail,
-                        color: Colors.white,
-                      ),
-                    ),
-                    title: Text(
-                      asunto,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 6),
-
-                        Text(
-                          mensaje,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        Text(
-                          "De: $remitente",
-                          style: const TextStyle(
-                            color: Colors.blueAccent,
-                            fontSize: 12,
-                          ),
-                        ),
-
-                        if (fecha != null)
-                          Text(
-                            "${fecha.day}/${fecha.month}/${fecha.year} - ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}",
-                            style: const TextStyle(
-                              color: Colors.white38,
-                              fontSize: 11,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   void _showTasks(BuildContext context, String uid) {
     final controller = TextEditingController();
@@ -923,167 +789,6 @@ class WorkerProfilePage extends StatelessWidget {
                         }
 
                         final notes = snapshot.data!.docs;
-        return Container(
-          height: 400,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          child: const Center(
-            child: Text(
-              "Aquí aparecerán las tareas",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-     void _showContactAdmin(BuildContext context, String uid) async {
-  final subjectController = TextEditingController();
-  final messageController = TextEditingController();
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) {
-      return Container(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E293B),
-              Color(0xFF334155),
-            ],
-          ),
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(30),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Enviar correo al administrador",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            _buildInput(subjectController, "Asunto"),
-
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: TextField(
-                controller: messageController,
-                maxLines: 5,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: "Escribe tu mensaje...",
-                  hintStyle:
-                      const TextStyle(color: Colors.white54),
-                  filled: true,
-                  fillColor:
-                      Colors.white.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.send),
-                label: const Text("Enviar correo"),
-                onPressed: () async {
-                  if (subjectController.text.trim().isEmpty ||
-                      messageController.text.trim().isEmpty) {
-                    return;
-                  }
-
-                  await FirebaseFirestore.instance
-                      .collection('emails_admin')
-                      .add({
-                    'workerId': uid,
-                    'subject':
-                        subjectController.text.trim(),
-                    'message':
-                        messageController.text.trim(),
-                    'createdAt':
-                        FieldValue.serverTimestamp(),
-                    'status': 'pendiente',
-                  });
-
-                  if (!context.mounted) return;
-
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Correo enviado al administrador",
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-  void _showCheckHistory(BuildContext context, String uid) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('workers')
-                .doc(uid)
-                .collection('fichajes')
-                .orderBy('fecha', descending: true)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-
-
-           
-              final docs = snapshot.data!.docs;
 
                         return ListView.builder(
                           itemCount: notes.length,
