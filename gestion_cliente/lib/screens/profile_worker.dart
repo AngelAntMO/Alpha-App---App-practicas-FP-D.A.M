@@ -78,16 +78,16 @@ class WorkerProfilePage extends StatelessWidget {
                     },
                   ),
 
-                  AnimatedMenuButton(
-                    icon: Icons.calendar_month,
-                    title: "Mis horarios",
+                 AnimatedMenuButton(
+                    icon: Icons.mail_outline,
+                    title: "Mis mensajes",
                     onTap: () {
                       if (user != null) {
-                        _showSchedules(context, user.uid);
+                        _showInternalMessages(context, user.uid);
                       }
                     },
                   ),
-
+                  
                   AnimatedMenuButton(
                     icon: Icons.work_outline,
                     title: "Mis tareas",
@@ -430,29 +430,136 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showSchedules(BuildContext context, String uid) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          height: 400,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+  void _showInternalMessages(BuildContext context, String uid) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) {
+      return Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F172A),
+              Color(0xFF1E293B),
+              Color(0xFF334155),
+            ],
           ),
-          child: const Center(
-            child: Text(
-              "Aquí aparecerán los horarios",
-              style: TextStyle(color: Colors.white),
-            ),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(30),
           ),
-        );
-      },
-    );
-  }
+        ),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('workers')
+              .doc(uid)
+              .collection('mensajes')
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            final docs = snapshot.data!.docs;
+
+            if (docs.isEmpty) {
+              return const Center(
+                child: Text(
+                  "No tienes mensajes",
+                  style: TextStyle(color: Colors.white70),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: docs.length,
+              itemBuilder: (context, index) {
+                final data =
+                    docs[index].data() as Map<String, dynamic>;
+
+                final asunto = data['asunto'] ?? 'Sin asunto';
+                final mensaje = data['mensaje'] ?? '';
+                final remitente = data['remitente'] ?? 'Administrador';
+
+                DateTime? fecha;
+
+                if (data['createdAt'] != null) {
+                  fecha =
+                      (data['createdAt'] as Timestamp).toDate();
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 15),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFF64B5F6),
+                      child: Icon(
+                        Icons.mail,
+                        color: Colors.white,
+                      ),
+                    ),
+                    title: Text(
+                      asunto,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 6),
+
+                        Text(
+                          mensaje,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Text(
+                          "De: $remitente",
+                          style: const TextStyle(
+                            color: Colors.blueAccent,
+                            fontSize: 12,
+                          ),
+                        ),
+
+                        if (fecha != null)
+                          Text(
+                            "${fecha.day}/${fecha.month}/${fecha.year} - ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}",
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 11,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      );
+    },
+  );
+}
 
   void _showTasks(BuildContext context, String uid) {
     showModalBottomSheet(
