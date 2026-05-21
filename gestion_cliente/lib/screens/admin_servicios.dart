@@ -663,6 +663,12 @@ class _CardBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
 
+        // ── Botón eliminar perfil de trabajador ───────────────────────────────
+        if (eid.isNotEmpty)
+          _BtnEliminarProfesor(doc: doc, eid: eid),
+ 
+        if (eid.isNotEmpty) const SizedBox(height: 8),
+
         // ── Botón eliminar clase ───────────────────────────────────────────────
         _BtnSec(
           icono:  Icons.delete_outline,
@@ -697,6 +703,131 @@ class _CardBody extends StatelessWidget {
           ),
         ),
       ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  BOTÓN + LÓGICA: ELIMINAR PERFIL DE TRABAJADOR
+// ═══════════════════════════════════════════════════════════════════════════════
+class _BtnEliminarProfesor extends StatefulWidget {
+  final QueryDocumentSnapshot doc;
+  final String                eid;
+ 
+  const _BtnEliminarProfesor({required this.doc, required this.eid});
+ 
+  @override
+  State<_BtnEliminarProfesor> createState() => _BtnEliminarProfesorState();
+}
+ 
+class _BtnEliminarProfesorState extends State<_BtnEliminarProfesor> {
+  bool _eliminando = false;
+ 
+  Future<void> _eliminar() async {
+    setState(() => _eliminando = true);
+    try {
+      // 1. Borrar documento del trabajador en users
+      await FirebaseFirestore.instance.collection('users').doc(widget.eid).delete();
+ 
+      // 2. Limpiar employeeID de la clase
+      await FirebaseFirestore.instance.collection('clases').doc(widget.doc.id).update({
+        'employeeID': '',
+      });
+ 
+      // Nota: la cuenta de Firebase Auth queda huérfana (no puede hacer nada
+      // sin su documento en users), pero para eliminarla del todo se necesita
+      // una Cloud Function con el Admin SDK.
+ 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Perfil de trabajador eliminado'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+    if (mounted) setState(() => _eliminando = false);
+  }
+ 
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _eliminando
+          ? null
+          : () => showDialog(
+                context: context,
+                builder: (ctx) => FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance.collection('users').doc(widget.eid).get(),
+                  builder: (_, snap) {
+                    // Nombre del trabajador para el mensaje de confirmación
+                    String nombreProf = 'este trabajador';
+                    if (snap.hasData && snap.data!.exists) {
+                      final ud = snap.data!.data() as Map<String, dynamic>;
+                      final n  = '${ud['nombre'] ?? ''} ${ud['apellidos'] ?? ''}'.trim();
+                      if (n.isNotEmpty) nombreProf = n;
+                    }
+ 
+                    return AlertDialog(
+                      backgroundColor: const Color(0xFF1E293B),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: const Text(
+                        'Eliminar trabajador',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      content: Text(
+                        '¿Eliminar el perfil de $nombreProf? La clase quedará sin profesor asignado hasta que añadas uno nuevo.',
+                        style: const TextStyle(color: Colors.white60),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _eliminar();
+                          },
+                          child: const Text(
+                            'Eliminar',
+                            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+        decoration: BoxDecoration(
+          color:  Colors.redAccent.withAlpha(18),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.redAccent.withAlpha(50)),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (_eliminando)
+            const SizedBox(
+              width: 15, height: 15,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent),
+            )
+          else
+            const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 17),
+          const SizedBox(width: 8),
+          Text(
+            _eliminando ? 'Eliminando...' : 'Eliminar perfil de trabajador',
+            style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ]),
+      ),
     );
   }
 }
