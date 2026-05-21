@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:gestion_cliente/screens/inicio_superadmin.dart';
 import 'root_page.dart';
 
 class ProfileAdmin extends StatelessWidget {
@@ -92,6 +93,17 @@ class ProfileAdmin extends StatelessWidget {
                       }
                     },
                   ),
+
+                    AnimatedMenuButton(
+                    icon: Icons.email_outlined,
+                    title: "Contactar Trabajador",
+                    onTap: () {
+                      if (user != null) {
+                        _showContactWorker(context, user.uid);
+                     }
+                    },
+                  ),
+
 
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 40),
@@ -390,6 +402,323 @@ class ProfileAdmin extends StatelessWidget {
     );
   }
 
+
+ void _showContactWorker(BuildContext context, String uid) async {
+  final subjectController = TextEditingController();
+  final messageController = TextEditingController();
+
+  // ✅ MULTI SELECCIÓN
+  List<String> selectedEmployeeIds = [];
+  List<String> selectedWorkerNames = [];
+  bool selectAll = false;
+
+  // 🔥 OBTENER NEGOCIOS DEL ADMIN
+  final adminDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .get();
+
+  final adminData = adminDoc.data() ?? {};
+
+  final List<String> negocios = List<String>.from(
+    adminData['negocios'] ?? [],
+  );
+
+  if (!context.mounted) return;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF0F172A),
+                  Color(0xFF1E293B),
+                  Color(0xFF334155),
+                ],
+              ),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Contactar trabajador",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 👇 SI EL ADMIN NO TIENE NEGOCIOS
+                  if (negocios.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Text(
+                        "No tienes negocios asignados",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
+                  else
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .where('rol', isEqualTo: 'worker')
+                          .where(
+                            'negocios',
+                            arrayContainsAny: negocios,
+                          )
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const CircularProgressIndicator();
+                        }
+
+                        final workers = snapshot.data!.docs;
+
+                        if (workers.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              "No hay trabajadores disponibles",
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          );
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            children: [
+                              // ✅ SELECCIONAR TODOS
+                              CheckboxListTile(
+                                value: selectAll,
+                                activeColor: Colors.blueAccent,
+                                title: const Text(
+                                  "Todos los trabajadores",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectAll = value ?? false;
+
+                                    if (selectAll) {
+                                      selectedEmployeeIds =
+                                          workers.map((w) => w.id).toList();
+
+                                      selectedWorkerNames =
+                                          workers.map((w) {
+                                        final data =
+                                            w.data() as Map<String, dynamic>;
+
+                                        return
+                                            "${data['nombre'] ?? ''} ${data['apellidos'] ?? ''}";
+                                      }).toList();
+                                    } else {
+                                      selectedEmployeeIds.clear();
+                                      selectedWorkerNames.clear();
+                                    }
+                                  });
+                                },
+                              ),
+
+                              const Divider(color: Colors.white24),
+
+                              // ✅ LISTA DE TRABAJADORES
+                              SizedBox(
+                                height: 220,
+                                child: ListView.builder(
+                                  itemCount: workers.length,
+                                  itemBuilder: (context, index) {
+                                    final worker = workers[index];
+
+                                    final data =
+                                        worker.data()
+                                            as Map<String, dynamic>;
+
+                                    final workerName =
+                                        "${data['nombre'] ?? ''} ${data['apellidos'] ?? ''}";
+
+                                    final isSelected =
+                                        selectedEmployeeIds.contains(
+                                      worker.id,
+                                    );
+
+                                    return CheckboxListTile(
+                                      value: isSelected,
+                                      activeColor: Colors.blueAccent,
+                                      title: Text(
+                                        workerName,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          if (value == true) {
+                                            if (!selectedEmployeeIds
+                                                .contains(worker.id)) {
+                                              selectedEmployeeIds
+                                                  .add(worker.id);
+
+                                              selectedWorkerNames
+                                                  .add(workerName);
+                                            }
+                                          } else {
+                                            selectedEmployeeIds
+                                                .remove(worker.id);
+
+                                            selectedWorkerNames
+                                                .remove(workerName);
+                                          }
+
+                                          // 🔥 CONTROL AUTOMÁTICO
+                                          selectAll =
+                                              selectedEmployeeIds.length ==
+                                              workers.length;
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  _buildInput(subjectController, "Asunto"),
+
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextField(
+                      controller: messageController,
+                      maxLines: 5,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: "Escribe tu mensaje...",
+                        hintStyle:
+                            const TextStyle(color: Colors.white54),
+                        filled: true,
+                        fillColor:
+                            Colors.white.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.send),
+                      label: const Text("Enviar mensaje"),
+                      onPressed: () async {
+                        // ✅ VALIDAR SELECCIÓN
+                        if (selectedEmployeeIds.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Selecciona al menos un trabajador",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // ✅ VALIDAR CAMPOS
+                        if (subjectController.text.trim().isEmpty ||
+                            messageController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Completa todos los campos",
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // ✅ ENVIAR A TODOS LOS SELECCIONADOS
+                        for (
+                          int i = 0;
+                          i < selectedEmployeeIds.length;
+                          i++
+                        ) {
+                          await FirebaseFirestore.instance
+                              .collection('worker_messages')
+                              .add({
+                            'adminId': uid,
+                            'employeeId':
+                                selectedEmployeeIds[i],
+                            'workerName':
+                                selectedWorkerNames[i],
+                            'subject':
+                                subjectController.text.trim(),
+                            'message':
+                                messageController.text.trim(),
+                            'createdAt':
+                                FieldValue.serverTimestamp(),
+                            'status': 'pendiente',
+                          });
+                        }
+
+                        if (!context.mounted) return;
+
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "Mensaje enviado a ${selectedEmployeeIds.length} trabajador(es)",
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+  
   void _showSchedules(BuildContext context, String uid) {
     showModalBottomSheet(
       context: context,
