@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gestion_cliente/screens/admin_servicios.dart';
 import 'package:gestion_cliente/screens/estadisticas_admin.dart';
+import 'profile_admin.dart';
 
 class InicioAdmin extends StatefulWidget {
   const InicioAdmin({super.key});
