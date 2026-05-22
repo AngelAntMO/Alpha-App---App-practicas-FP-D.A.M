@@ -83,12 +83,13 @@ class _InicioAdminState extends State<InicioAdmin>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _entryController, curve: Curves.easeOut));
 
-    _glowColorAnimation = ColorTween(
-      begin: const Color(0xFF2563EB),
-      end: const Color(0xFF60A5FA),
-    ).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
+    _glowColorAnimation =
+        ColorTween(
+          begin: const Color(0xFF2563EB),
+          end: const Color(0xFF60A5FA),
+        ).animate(
+          CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+        );
 
     _entryController.forward();
 
@@ -147,35 +148,34 @@ class _InicioAdminState extends State<InicioAdmin>
   }
 
   // Para obtener el negocio del admin logeado.
-Future<void> obtenerNegocioAdmin() async {
-  try {
-    final user = FirebaseAuth.instance.currentUser;
+  Future<void> obtenerNegocioAdmin() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null) {
-      debugPrint("Usuario no logueado");
-      return;
+      if (user == null) {
+        debugPrint("Usuario no logueado");
+        return;
+      }
+
+      final uid = user.uid;
+
+      final query = await FirebaseFirestore.instance
+          .collection('negocios')
+          .where('encargadoID', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        setState(() {
+          negocioID = query.docs.first.id;
+        });
+      } else {
+        debugPrint("No hay negocio para este admin");
+      }
+    } catch (e) {
+      debugPrint("ERROR FIREBASE: $e");
     }
-
-    final uid = user.uid;
-
-    final query = await FirebaseFirestore.instance
-        .collection('negocios')
-        .where('encargadoID', isEqualTo: uid)
-        .limit(1)
-        .get();
-
-    if (query.docs.isNotEmpty) {
-      setState(() {
-        negocioID = query.docs.first.id;
-      });
-    } else {
-      debugPrint("No hay negocio para este admin");
-    }
-
-  } catch (e) {
-    debugPrint("ERROR FIREBASE: $e");
   }
-}
 
   // Esto es para liberar memoria y evitar la estupenda ventana roja de error de flutter.
   @override
@@ -204,15 +204,11 @@ Future<void> obtenerNegocioAdmin() async {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text('Panel de Administrador',
-              style: TextStyle(color: Colors.white)),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              color: Colors.white,
-              onPressed: () async => FirebaseAuth.instance.signOut(),
-            ),
-          ],
+          title: const Text(
+            'Panel de Administrador',
+            style: TextStyle(color: Colors.white),
+          ),
+         
         ),
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -224,7 +220,6 @@ Future<void> obtenerNegocioAdmin() async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   // ── Logo animado ──
                   Center(
                     child: SizedBox(
@@ -235,30 +230,34 @@ Future<void> obtenerNegocioAdmin() async {
                           AnimatedBuilder(
                             animation: _waveAnimation,
                             builder: (context, child) => Container(
-                              width:  220 + (_waveAnimation.value * 80),
+                              width: 220 + (_waveAnimation.value * 80),
                               height: 220 + (_waveAnimation.value * 80),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: Colors.lightBlueAccent.withValues(
-                                      alpha: 1 - _waveAnimation.value),
+                                    alpha: 1 - _waveAnimation.value,
+                                  ),
                                   width: 2,
                                 ),
                               ),
                             ),
                           ),
                           AnimatedBuilder(
-                            animation: Listenable.merge(
-                                [_animation, _glowAnimation]),
+                            animation: Listenable.merge([
+                              _animation,
+                              _glowAnimation,
+                            ]),
                             builder: (context, child) => Container(
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (_glowColorAnimation.value ??
-                                            Colors.lightBlueAccent)
-                                        .withValues(alpha: 0.5),
-                                    blurRadius:   _glowAnimation.value,
+                                    color:
+                                        (_glowColorAnimation.value ??
+                                                Colors.lightBlueAccent)
+                                            .withValues(alpha: 0.5),
+                                    blurRadius: _glowAnimation.value,
                                     spreadRadius: _glowAnimation.value / 2,
                                   ),
                                 ],
@@ -270,7 +269,8 @@ Future<void> obtenerNegocioAdmin() async {
                             ),
                             child: Image.asset(
                               'assets/images/Icono_AlphaApp.png',
-                              width: 170, height: 170,
+                              width: 170,
+                              height: 170,
                             ),
                           ),
                         ],
@@ -288,10 +288,7 @@ Future<void> obtenerNegocioAdmin() async {
                       child: const Center(
                         child: Column(
                           children: [
-                            Text(
-                              '👋',
-                              style: TextStyle(fontSize: 42),
-                            ),
+                          
                             SizedBox(height: 10),
                             Text(
                               'Bienvenido, Admin',
@@ -330,27 +327,26 @@ Future<void> obtenerNegocioAdmin() async {
                       position: _cardSlideAnimations[0],
                       child: _AdminHoverBtn(
                         icon: Icons.people,
-                        text: 'Usuarios',
+                        text: 'Servicios',
                         onTap: () {
-                                  if (negocioID == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Cargando negocio...'),
-                                      ),
-                                    );
+                          if (negocioID == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Cargando negocio...'),
+                              ),
+                            );
 
-                                    return;
-                                  }
+                            return;
+                          }
 
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ReservasClasePage(
-                                        negocioID: negocioID!,
-                                      ),
-                                    ),
-                                  );
-                                },
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ReservasClasePage(negocioID: negocioID!),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -362,7 +358,7 @@ Future<void> obtenerNegocioAdmin() async {
                       position: _cardSlideAnimations[1],
                       child: _AdminHoverBtn(
                         icon: Icons.business,
-                        text: 'Servicios',
+                        text: 'Gestión',
                         onTap: () {
                           Navigator.push(
                             context,
@@ -401,9 +397,16 @@ Future<void> obtenerNegocioAdmin() async {
                     child: SlideTransition(
                       position: _cardSlideAnimations[3],
                       child: _AdminHoverBtn(
-                        icon: Icons.settings,
-                        text: 'Configuración',
-                        onTap: () {},
+                        icon: Icons.person_outline,
+                        text: 'Perfil',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProfileAdmin(),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -421,8 +424,8 @@ Future<void> obtenerNegocioAdmin() async {
 //  BOTÓN HOVER
 // ─────────────
 class _AdminHoverBtn extends StatefulWidget {
-  final IconData     icon;
-  final String       text;
+  final IconData icon;
+  final String text;
   final VoidCallback onTap;
 
   const _AdminHoverBtn({
@@ -449,7 +452,7 @@ class _AdminHoverBtnState extends State<_AdminHoverBtn> {
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _hovering = true),
-          onExit:  (_) => setState(() => _hovering = false),
+          onExit: (_) => setState(() => _hovering = false),
           child: Transform.translate(
             offset: Offset(0, _hovering ? -6 : 0),
             child: AnimatedContainer(
@@ -480,7 +483,7 @@ class _AdminHoverBtnState extends State<_AdminHoverBtn> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       AnimatedScale(
-                        scale:    _hovering ? 1.15 : 1.0,
+                        scale: _hovering ? 1.15 : 1.0,
                         duration: const Duration(milliseconds: 200),
                         child: Icon(
                           widget.icon,
@@ -494,8 +497,8 @@ class _AdminHoverBtnState extends State<_AdminHoverBtn> {
                       Text(
                         widget.text,
                         style: const TextStyle(
-                          color:      Colors.white,
-                          fontSize:   15,
+                          color: Colors.white,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
