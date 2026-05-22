@@ -79,7 +79,7 @@ class ProfileAdmin extends StatelessWidget {
                     title: "Mis mensajes",
                     onTap: () {
                       if (user != null) {
-                        _showSchedules(context, user.uid);
+                        _showInternalMessages(context, user.uid);
                       }
                     },
                   ),
@@ -719,24 +719,190 @@ class ProfileAdmin extends StatelessWidget {
   );
 }
   
-  void _showSchedules(BuildContext context, String uid) {
+ void _showInternalMessages(BuildContext context, String uid) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
-          height: 400,
+          height: MediaQuery.of(context).size.height * 0.75,
+
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+              ],
             ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(30),
+            ),
           ),
-          child: const Center(
-            child: Text(
-              "Aquí aparecerán los mensajes",
-              style: TextStyle(color: Colors.white),
-            ),
+
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('admin_messages')
+                .where('adminId', isEqualTo: uid)
+                .snapshots(),
+
+            builder: (context, snapshot) {
+
+              // 🔴 ERROR
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      snapshot.error.toString(),
+
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              // ⏳ CARGA
+              if (snapshot.connectionState ==
+                  ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+
+              // 📭 SIN MENSAJES
+              if (!snapshot.hasData ||
+                  snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "No tienes mensajes",
+
+                    style: TextStyle(
+                      color: Colors.white70,
+                    ),
+                  ),
+                );
+              }
+
+              final docs = snapshot.data!.docs;
+
+          
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(20),
+
+                itemCount: docs.length,
+
+                itemBuilder: (context, index) {
+
+                  final data =
+                      docs[index].data()
+                          as Map<String, dynamic>;
+
+                  final asunto =
+                      data['subject'] ?? 'Sin asunto';
+
+                  final mensaje =
+                      data['message'] ?? '';
+
+                  DateTime? fecha;
+
+                  if (data['createdAt'] != null) {
+                    fecha =
+                        (data['createdAt'] as Timestamp)
+                            .toDate();
+                  }
+
+                  return Container(
+                    margin:
+                        const EdgeInsets.only(bottom: 15),
+
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(
+                        alpha: 0.05,
+                      ),
+
+                      borderRadius:
+                          BorderRadius.circular(18),
+
+                      border: Border.all(
+                        color: Colors.white.withValues(
+                          alpha: 0.08,
+                        ),
+                      ),
+                    ),
+
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor:
+                            Color(0xFF64B5F6),
+
+                        child: Icon(
+                          Icons.mail,
+                          color: Colors.white,
+                        ),
+                      ),
+
+                      title: Text(
+                        asunto,
+
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      subtitle: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+
+                        children: [
+
+                          const SizedBox(height: 6),
+
+                          Text(
+                            mensaje,
+
+                            style: const TextStyle(
+                              color: Colors.white70,
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          if (fecha != null)
+                            Text(
+                              "${fecha.day}/${fecha.month}/${fecha.year} - ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}",
+
+                              style: const TextStyle(
+                                color: Colors.white38,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      trailing: IconButton(
+                        icon: const Icon(
+                          Icons.delete,
+                          color: Colors.redAccent,
+                        ),
+
+                        onPressed: () async {
+                          await docs[index]
+                              .reference
+                              .delete();
+                        },
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         );
       },
