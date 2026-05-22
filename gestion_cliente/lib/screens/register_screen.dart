@@ -1,7 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:gestion_cliente/core/app_colors.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -11,6 +11,8 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  final TextEditingController nombreController = TextEditingController();
+  final TextEditingController apellidoController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
@@ -20,39 +22,18 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController edadController = TextEditingController();
 
   bool loading = false;
-  double opacity = 0;
-  double offsetY = 50;
   bool isPasswordHidden = true;
   bool isConfirmPasswordHidden = true;
 
   Map<String, bool> negocios = {
     "Gimnasio": false,
-    "Centro de Yoga": false,
+    "Yoga": false,
     "Peluqueria": false,
-    "Centro de Fisioterapia": false,
+    "Fisioterapia": false,
     "Academia": false,
   };
 
-  @override
-  void initState() {
-    super.initState();
-
-    Future.delayed(const Duration(milliseconds: 200), () {
-      setState(() {
-        opacity = 1;
-        offsetY = 0;
-      });
-    });
-  }
-
   Future<void> register() async {
-    if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Las contraseñas no coinciden')),
-      );
-      return;
-    }
-
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Las contraseñas no coinciden')),
@@ -77,6 +58,8 @@ class _RegisterPageState extends State<RegisterPage> {
           .toList();
 
       await FirebaseFirestore.instance.collection('users').doc(user!.uid).set({
+        "nombre": nombreController.text.trim(),
+        "apellidos": apellidoController.text.trim(),
         "email": user.email,
         "telefono": telefonoController.text.trim(),
         "direccion": direccionController.text.trim(),
@@ -86,6 +69,8 @@ class _RegisterPageState extends State<RegisterPage> {
         "activo": true,
         "fecha_registro": Timestamp.now(),
       });
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Usuario creado correctamente')),
@@ -101,25 +86,15 @@ class _RegisterPageState extends State<RegisterPage> {
         mensaje = 'La contraseña es muy débil';
       }
 
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(mensaje)));
     }
 
+    if (!mounted) return;
     setState(() => loading = false);
-  }
-
-  InputDecoration customInput(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon),
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.0),
-        borderSide: BorderSide.none,
-      ),
-    );
   }
 
   @override
@@ -129,13 +104,13 @@ class _RegisterPageState extends State<RegisterPage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFE0E3E7), Color(0xFF64B5F6)],
+          colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF64B5F6)],
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text('Registro'),
+          title: const Text("Registro"),
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
@@ -144,198 +119,215 @@ class _RegisterPageState extends State<RegisterPage> {
             constraints: const BoxConstraints(maxWidth: 500),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 500),
-                opacity: opacity,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeOut,
-                  transform: Matrix4.translationValues(0, offsetY, 0),
-                  child: Card(
-                    color: const Color.fromARGB(255, 126, 141, 161),
-                    elevation: 10,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+
+                  _glassField(_input(nombreController, "Nombre", Icons.person)),
+                  const SizedBox(height: 12),
+
+                  _glassField(
+                    _input(
+                      apellidoController,
+                      "Apellidos",
+                      Icons.person_outline,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 10),
+                  ),
+                  const SizedBox(height: 12),
 
-                          // Email
-                          TextField(
-                            controller: emailController,
-                            decoration: customInput('Email', Icons.email),
-                          ),
+                  _glassField(_input(emailController, "Email", Icons.email)),
+                  const SizedBox(height: 12),
 
-                          const SizedBox(height: 15),
+                  _glassField(
+                    _input(telefonoController, "Teléfono", Icons.phone),
+                  ),
+                  const SizedBox(height: 12),
 
-                          // Teléfono
-                          TextField(
-                            controller: telefonoController,
-                            decoration: customInput('Teléfono', Icons.phone),
-                          ),
+                  _glassField(
+                    _input(direccionController, "Dirección", Icons.location_on),
+                  ),
+                  const SizedBox(height: 12),
 
-                          const SizedBox(height: 15),
+                  _glassField(
+                    _input(edadController, "Edad", Icons.cake, number: true),
+                  ),
+                  const SizedBox(height: 12),
 
-                          //  Dirección
-                          TextField(
-                            controller: direccionController,
-                            decoration: customInput(
-                              'Dirección',
-                              Icons.location_on,
-                            ),
-                          ),
+                  _glassField(_passwordField()),
+                  const SizedBox(height: 12),
 
-                          const SizedBox(height: 15),
+                  _glassField(_confirmPasswordField()),
+                  const SizedBox(height: 20),
 
-                          // Edad
-                          TextField(
-                            controller: edadController,
-                            keyboardType: TextInputType.number,
-                            decoration: customInput('Edad', Icons.cake),
-                          ),
-
-                          const SizedBox(height: 15),
-
-                          TextField(
-                            controller: passwordController,
-                            obscureText: isPasswordHidden,
-                            decoration: customInput('Contraseña', Icons.lock)
-                                .copyWith(
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      isPasswordHidden
-                                          ? Icons.visibility
-                                          : Icons.visibility_off,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        isPasswordHidden = !isPasswordHidden;
-                                      });
-                                    },
-                                  ),
-                                ),
-                          ),
-
-                          const SizedBox(height: 15),
-
-                          // Confirm Password
-                          TextField(
-                            controller: confirmPasswordController,
-                            obscureText: isConfirmPasswordHidden,
-                            decoration:
-                                customInput(
-                                  'Confirmar contraseña',
-                                  Icons.lock,
-                                ).copyWith(
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      isConfirmPasswordHidden
-                                          ? Icons.visibility
-                                          : Icons.visibility_off,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        isConfirmPasswordHidden =
-                                            !isConfirmPasswordHidden;
-                                      });
-                                    },
-                                  ),
-                                ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Negocios
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Tipo de negocio",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-
-                          Column(
-                            children: negocios.keys.map((key) {
-                              return CheckboxListTile(
-                                title: Text(
-                                  key,
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                                value: negocios[key],
-                                onChanged: (value) {
-                                  setState(() {
-                                    negocios[key] = value!;
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Botón
-                          MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 250,
-                              height: 50,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF1565C0),
-                                      Color(0xFF64B5F6),
-                                    ], // degradado azul
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: loading ? null : register,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFF1565C0),
-                                    elevation: 5,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 300),
-                                    child: loading
-                                        ? const SizedBox(
-                                            key: ValueKey('loading'),
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Text(
-                                            'Registrarse',
-                                            key: ValueKey('text'),
-                                            style: TextStyle(fontSize: 16),
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Tipo de negocio",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ),
+
+                  const SizedBox(height: 10),
+
+                  ...negocios.keys.map((key) {
+                    return CheckboxListTile(
+                      activeColor: Colors.blueAccent,
+                      title: Text(
+                        key,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      value: negocios[key],
+                      onChanged: (value) {
+                        setState(() => negocios[key] = value!);
+                      },
+                    );
+                  }),
+
+                  const SizedBox(height: 20),
+
+                  GestureDetector(
+                    onTap: loading ? null : register,
+                    child: Container(
+                      height: 55,
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blueAccent.withValues(alpha: 0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: loading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "Registrarse",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+                ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // 🔥 GLASS WRAPPER
+  Widget _glassField(Widget child) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  // INPUT SIMPLE
+  Widget _input(
+    TextEditingController c,
+    String label,
+    IconData icon, {
+    bool number = false,
+  }) {
+    return TextField(
+      controller: c,
+      keyboardType: number ? TextInputType.number : TextInputType.text,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: Colors.white70),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _passwordField() {
+    return TextField(
+      controller: passwordController,
+      obscureText: isPasswordHidden,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: "Contraseña",
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: const Icon(Icons.lock, color: Colors.white70),
+        suffixIcon: IconButton(
+          icon: Icon(
+            isPasswordHidden ? Icons.visibility : Icons.visibility_off,
+            color: Colors.white70,
+          ),
+          onPressed: () => setState(() => isPasswordHidden = !isPasswordHidden),
+        ),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _confirmPasswordField() {
+    return TextField(
+      controller: confirmPasswordController,
+      obscureText: isConfirmPasswordHidden,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: "Confirmar contraseña",
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: const Icon(Icons.lock, color: Colors.white70),
+        suffixIcon: IconButton(
+          icon: Icon(
+            isConfirmPasswordHidden ? Icons.visibility : Icons.visibility_off,
+            color: Colors.white70,
+          ),
+          onPressed: () => setState(
+            () => isConfirmPasswordHidden = !isConfirmPasswordHidden,
+          ),
+        ),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
         ),
       ),
     );

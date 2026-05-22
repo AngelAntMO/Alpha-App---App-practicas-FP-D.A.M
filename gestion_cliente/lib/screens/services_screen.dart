@@ -1,196 +1,238 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
+import 'infoservicios/academia_info.dart';
+import 'infoservicios/fisio_info.dart';
+import 'infoservicios/gimnasio_info.dart';
+import 'infoservicios/pelu_info.dart';
+import 'infoservicios/yoga_info.dart';
 
-class ServicePage extends StatelessWidget {
+class ServicePage extends StatefulWidget {
   const ServicePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFE0E3E7), Color(0xFF64B5F6)],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text('Servicios disponibles'),
-          backgroundColor: Colors.transparent,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF9CA3AF), Color(0xFF4B5563)],
-              ),
-            ),
-          ),
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors:[ Color(0xFF9CA3AF), Color(0xFF4B5563)],
-                ),
-                borderRadius: BorderRadius.circular(
-                  12,
-                ), 
-              ),
-              child: Column(
-                children: const [
-                  ServiceRow(
-                    imagePath: 'assets/images/peluqueriainfo2.png',
-                    title: 'Peluquería',
-                    description:
-                       '\n Realza tu belleza con nuestro servicio de peluquería y estética: \n\n Te ofrecemos atención personalizada y profesional para que luzcas increíble en cada ocasión: \n cortes modernos, peinados, coloración, tratamientos capilares y mucho más.',
-                  ),
-                  SizedBox(height: 60),
-                  ServiceRow(
-                    imagePath: 'assets/images/clinicafisioinfo.png',
-                    title: 'Clínica de fisioterapia',
-                    description:
-                        ' \n Recupera tu bienestar y mantener un ritmo saludable con nuestro servicio de fisioterapia. \n\n Te ofrecemos atención especializada para aliviar dolores musculares, rehabilitar lesiones, mejorar tu movilidad y ayudarte a recuperar tu calidad de vida. \n Contamos con tratamientos personalizados, terapia manual, ejercicios terapéuticos y acompañamiento profesional para cada necesidad.',
-                  ),
-                  SizedBox(height: 60),
-                  ServiceRow(
-                    imagePath: 'assets/images/gimnasioinfo.png',
-                    title: 'Gimnasio',
-                    description:
-                        ' \n Transforma tu cuerpo y mejora tu salud en nuestro gimnasio. \n\n Te ofrecemos un espacio equipado para que entrenes con comodidad, seguridad y motivación. Contamos con rutinas personalizadas, asesoría profesional \n y actividades diseñadas para ayudarte a alcanzar tus objetivos.',
-                  ),
-                  SizedBox(height: 60),
-                  ServiceRow(
-                    imagePath: 'assets/images/yogainfo.png',
-                    title: 'Centro de yoga y pilates',
-                    description:
-                        '\n Encuentra equilibrio, bienestar y armonía en nuestro centro de yoga y pilates. \n\n Ofrecemos clases diseñadas para fortalecer tu cuerpo, mejorar tu flexibilidad, corregir tu postura y ayudarte a liberar el estrés del día a día. \n Nuestros programas combinan técnicas de respiración, relajación y ejercicios guiados por profesionales para adaptarse a todos los niveles.',
-                  ),
-                  SizedBox(height: 60),
-                  ServiceRow(
-                    imagePath: 'assets/images/academiainfo.png',
-                    title: 'Academia',
-                    description:
-                        '\n Impulsa tu aprendizaje en nuestra academia \n\n Ofrecemos formación de calidad con programas diseñados para fortalecer conocimientos, desarrollar habilidades y ayudarte a alcanzar tus metas académicas o profesionales. Contamos con docentes capacitados, atención personalizada y un ambiente ideal para aprender de forma práctica y efectiva.',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  State<ServicePage> createState() => _ServicePageState();
 }
 
+class _ServicePageState extends State<ServicePage> {
+  final PageController _controller = PageController(viewportFraction: 0.65);
 
 
-class ServiceRow extends StatelessWidget {
-  final String imagePath;
-  final String title;
-  final String description;
+  int? _pressedIndex;
 
-  const ServiceRow({
-    super.key,
-    required this.imagePath,
-    required this.title,
-    required this.description,
-  });
+  final services = const [
+    {"image": "assets/images/peluqueriainfo2.png", "title": "Peluquería"},
+    {"image": "assets/images/clinicafisioinfo.png", "title": "Clínica de fisioterapia"},
+    {"image": "assets/images/gimnasioinfo.png", "title": "Gimnasio"},
+    {"image": "assets/images/yogainfo.png", "title": "Yoga y Pilates"},
+    {"image": "assets/images/academiainfo.png", "title": "Academia"},
+  ];
+
+  void _open(String title) {
+    Widget page;
+
+    switch (title) {
+      case "Peluquería":
+        page = const PeluInfo();
+        break;
+      case "Clínica de fisioterapia":
+        page = const FisioInfo();
+        break;
+      case "Gimnasio":
+        page = const GimnasioInfo();
+        break;
+      case "Yoga y Pilates":
+        page = const YogaInfo();
+        break;
+      case "Academia":
+        page = const AcademiaInfo();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
+    final neonBlue = const Color(0xFF64B5F6);
 
-    // Tamaño de la imagen según ancho de pantalla
-    double imageWidth;
-    if (screenWidth < 600) {
-      imageWidth = 200; // móvil (más grande que antes)
-    } else if (screenWidth < 1200) {
-      imageWidth = 250; // tablet/PC mediano
-    } else {
-      imageWidth = 300; // PC grande
-    }
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0F1A),
 
-    // Layout móvil: columna vertical
-    if (screenWidth < 600) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          buildImage(imageWidth),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color.fromARGB(255, 30, 156, 229), // azul
+      appBar: AppBar(
+        title: const Text("Servicios"),
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF1E293B),
+                Color(0xFF334155),
+                Color(0xFF64B5F6),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18),
-          ),
-          const SizedBox(height: 40),
-        ],
-      );
-    }
+        ),
+      ),
 
-    // Layout desktop/web: fila horizontal
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Imagen + título en columna
-        Column(
+      body: ScrollConfiguration(
+        behavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+          },
+        ),
+
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            buildImage(imageWidth),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1976D2), // azul
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                "Explora nuestros servicios",
+                style: TextStyle(
+                  color: neonBlue,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  shadows: [
+                    Shadow(color: neonBlue.withValues(alpha: 0.9), blurRadius: 18),
+                    const Shadow(
+                      color: Colors.black,
+                      blurRadius: 10,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: PageView.builder(
+                controller: _controller,
+                physics: const BouncingScrollPhysics(),
+                itemCount: services.length,
+                itemBuilder: (context, index) {
+                  final item = services[index];
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+
+                    child: Listener(
+  onPointerDown: (_) {
+    setState(() {
+      _pressedIndex = index;
+    });
+  },
+  onPointerUp: (_) {
+    setState(() {
+      _pressedIndex = null;
+    });
+  },
+  onPointerCancel: (_) {
+    setState(() {
+      _pressedIndex = null;
+    });
+  },
+
+  child: GestureDetector(
+    onTap: () => _open(item["title"]!),
+
+    child: AnimatedScale(
+      duration: const Duration(milliseconds: 150),
+      scale: _pressedIndex == index ? 0.94 : 1.0,
+
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+
+                          // 🔥 GLOW AZUL MÁS POTENTE
+                          boxShadow: [
+                            BoxShadow(
+                             color: neonBlue.withValues(alpha: 0.45),
+                              blurRadius: 28,
+                              spreadRadius: 2.5,
+                              offset: const Offset(0, 8),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                item["image"]!,
+                                fit: BoxFit.cover,
+                              ),
+
+                              Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      Colors.black87,
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              Positioned(
+                                left: 16,
+                                bottom: 16,
+                                child: Text(
+                                  item["title"]!,
+                                  style: TextStyle(
+                                    color: neonBlue,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    shadows: [
+                                      Shadow(
+                                        color: neonBlue,
+                                        blurRadius: 14,
+                                      ),
+                                      const Shadow(
+                                        color: Colors.black,
+                                        blurRadius: 10,
+                                        offset: Offset(2, 2),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  ),
+                  );
+                },
               ),
             ),
           ],
-        ),
-        const SizedBox(width: 20),
-        // Descripción a la derecha
-        Expanded(
-          child: Text(
-            description,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget buildImage(double width) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.blue, width: 3),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.asset(
-          imagePath,
-          width: width,
-          fit: BoxFit.contain,
         ),
       ),
     );
