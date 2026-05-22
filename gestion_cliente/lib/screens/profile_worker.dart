@@ -98,15 +98,6 @@
                       },
                     ),
 
-                    AnimatedMenuButton(
-                      icon: Icons.history,
-                      title: "Historial de fichajes",
-                      onTap: () {
-                        if (user != null) {
-                          _showCheckHistory(context, user.uid);
-                        }
-                      },
-                    ),
 
                     AnimatedMenuButton(
                       icon: Icons.email_outlined,
@@ -607,24 +598,6 @@
     );
   }
 
-    void _showTasks(BuildContext context, String uid) {
-      final controller = TextEditingController();
-      final tagController = TextEditingController();
-      final searchController = TextEditingController();
-
-      List<String> selectedTags = [];
-      String priority = "low";
-      String searchText = "";
-
-      // 🎛 filtros nuevos
-      String selectedFilter = "none"; // none | priority | tags
-      String selectedPriority = "all";
-      String selectedTag = "";
-
-      // 🆕 selección múltiple
-      Set<String> selectedNotes = {};
-    }
-
       void _showContactAdmin(BuildContext context, String uid) async {
   final subjectController = TextEditingController();
   final messageController = TextEditingController();
@@ -940,8 +913,22 @@
     },
   );
 }
-  void _showCheckHistory(BuildContext context, String uid) {
+  void _showTasks(BuildContext context, String uid) {
     final controller = TextEditingController();
+    final tagController = TextEditingController();
+    final searchController = TextEditingController();
+
+    List<String> selectedTags = [];
+    String priority = "low";
+    String searchText = "";
+
+    // 🎛 filtros nuevos
+    String selectedFilter = "none"; // none | priority | tags
+    String selectedPriority = "all";
+    String selectedTag = "";
+
+    // 🆕 selección múltiple
+    Set<String> selectedNotes = {};
 
     showModalBottomSheet(
       context: context,
@@ -951,7 +938,7 @@
         return StatefulBuilder(
           builder: (context, setState) {
             return Container(
-              height: MediaQuery.of(context).size.height * 0.8,
+              height: MediaQuery.of(context).size.height * 0.85,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -960,25 +947,20 @@
                     Color(0xFF334155),
                   ],
                 ),
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               ),
               child: Column(
                 children: [
                   const SizedBox(height: 20),
 
                   const Text(
-                    "Historial / Bloc de notas",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    "Mi bloc de notas",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
 
+                  // 📝 INPUT NOTA
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
@@ -986,243 +968,421 @@
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         hintText: "Escribe una nota...",
-                        hintStyle:
-                            const TextStyle(color: Colors.white54),
+                        hintStyle: const TextStyle(color: Colors.white54),
                         filled: true,
-                        fillColor:
-                            Colors.white.withValues(alpha: 0.05),
+                        fillColor: Colors.white.withValues(alpha: 0.05),
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
+                  // 🏷 TAG INPUT
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: tagController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: "Añadir tag...",
+                              hintStyle: TextStyle(color: Colors.white54),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add, color: Colors.white),
+                          onPressed: () {
+                            if (tagController.text.trim().isEmpty) return;
+
+                            setState(() {
+                              selectedTags.add(tagController.text.trim());
+                            });
+
+                            tagController.clear();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 🏷 TAGS VISUALES
+                  Wrap(
+                    spacing: 6,
+                    children: selectedTags
+                        .map(
+                          (tag) => Chip(
+                            label: Text(tag),
+                            backgroundColor: Colors.blueAccent.withValues(
+                              alpha: 0.2,
+                            ),
+                            labelStyle: const TextStyle(color: Colors.white),
+                            deleteIcon: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            onDeleted: () {
+                              setState(() {
+                                selectedTags.remove(tag);
+                              });
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+
+                  // PRIORIDAD
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: DropdownButton<String>(
+                      value: priority,
+                      dropdownColor: const Color(0xFF1E293B),
+                      style: const TextStyle(color: Colors.white),
+                      items: const [
+                        DropdownMenuItem(value: "low", child: Text("Baja")),
+                        DropdownMenuItem(value: "medium", child: Text("Media")),
+                        DropdownMenuItem(value: "high", child: Text("Alta")),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          priority = value!;
+                        });
+                      },
+                    ),
+                  ),
+
+                  // 🚀 BOTÓN CREAR NOTA
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
-                          if (controller.text.trim().isEmpty) {
-                            return;
-                          }
+                          if (controller.text.trim().isEmpty) return;
 
                           await FirebaseFirestore.instance
                               .collection('users')
                               .doc(uid)
                               .collection('notes')
                               .add({
-                            'text': controller.text.trim(),
-                            'createdAt':
-                                FieldValue.serverTimestamp(),
-                            'done': false,
-                          });
+                                'text': controller.text.trim(),
+                                'createdAt': FieldValue.serverTimestamp(),
+                                'done': false,
+                                'tags': selectedTags,
+                                'priority': priority,
+                              });
 
                           controller.clear();
+                          selectedTags = [];
                         },
-                        child: const Text("Guardar nota"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text("Crear nota"),
                       ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('worker_messages')
-        .where('workerId', isEqualTo: uid)
-        .snapshots(),
-
-    builder: (context, snapshot) {
-
-      // 🔴 MOSTRAR ERRORES FIRESTORE
-      if (snapshot.hasError) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              snapshot.error.toString(),
-              style: const TextStyle(
-                color: Colors.redAccent,
-              ),
-            ),
-          ),
-        );
-      }
-
-      // ⏳ LOADING
-      if (snapshot.connectionState ==
-          ConnectionState.waiting) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      if (!snapshot.hasData) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      final docs = snapshot.data!.docs;
-
-      // 📭 SIN MENSAJES
-      if (docs.isEmpty) {
-        return const Center(
-          child: Text(
-            "No tienes mensajes",
-            style: TextStyle(color: Colors.white70),
-          ),
-        );
-      }
-
-      // 🔽 ORDENAR LOCALMENTE
-      docs.sort((a, b) {
-        final aTime = a['createdAt'] as Timestamp?;
-        final bTime = b['createdAt'] as Timestamp?;
-
-        if (aTime == null || bTime == null) {
-          return 0;
-        }
-
-        return bTime.compareTo(aTime);
-      });
-
-      return ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: docs.length,
-        itemBuilder: (context, index) {
-
-          final data =
-              docs[index].data() as Map<String, dynamic>;
-
-          final asunto =
-              data['subject'] ?? 'Sin asunto';
-
-          final mensaje =
-              data['message'] ?? '';
-
-          DateTime? fecha;
-
-          if (data['createdAt'] != null) {
-            fecha =
-                (data['createdAt'] as Timestamp)
-                    .toDate();
-          }
-
-          return Container(
-            margin: const EdgeInsets.only(bottom: 15),
-
-            decoration: BoxDecoration(
-              color:
-                  Colors.white.withValues(alpha: 0.05),
-
-              borderRadius: BorderRadius.circular(18),
-
-              border: Border.all(
-                color: Colors.white.withValues(
-                  alpha: 0.08,
-                ),
-              ),
-            ),
-
-            child: ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFF64B5F6),
-
-                child: Icon(
-                  Icons.mail,
-                  color: Colors.white,
-                ),
-              ),
-
-              title: Text(
-                asunto,
-
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              subtitle: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-
-                children: [
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    mensaje,
-
-                    style: const TextStyle(
-                      color: Colors.white70,
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-
-                    decoration: BoxDecoration(
-                      color: Colors.blueAccent
-                          .withValues(alpha: 0.15),
-
-                      borderRadius:
-                          BorderRadius.circular(20),
-                    ),
-
-                    child: const Text(
-                      "Administrador",
-
-                      style: TextStyle(
-                        color: Colors.blueAccent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                  // 🔍 BUSCADOR
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: searchController,
+                      style: const TextStyle(color: Colors.white),
+                      onChanged: (value) {
+                        setState(() {
+                          searchText = value.toLowerCase();
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Buscar notas...",
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.white54,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
-                  if (fecha != null)
-                    Text(
-                      "${fecha.day}/${fecha.month}/${fecha.year} - ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}",
+                  // 🎛 BOTONES FILTRO
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                selectedFilter = "priority";
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: selectedFilter == "priority"
+                                  ? Colors.blueAccent
+                                  : Colors.white.withValues(alpha: 0.1),
+                            ),
+                            child: const Text("Prioridad"),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                selectedFilter = "tags";
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: selectedFilter == "tags"
+                                  ? Colors.blueAccent
+                                  : Colors.white.withValues(alpha: 0.1),
+                            ),
+                            child: const Text("Tags"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
+                  // 🔽 FILTRO PRIORIDAD
+                  if (selectedFilter == "priority")
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: DropdownButton<String>(
+                        value: selectedPriority,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: const TextStyle(color: Colors.white),
+                        items: const [
+                          DropdownMenuItem(value: "all", child: Text("Todas")),
+                          DropdownMenuItem(value: "low", child: Text("Baja")),
+                          DropdownMenuItem(
+                            value: "medium",
+                            child: Text("Media"),
+                          ),
+                          DropdownMenuItem(value: "high", child: Text("Alta")),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            selectedPriority = value!;
+                          });
+                        },
                       ),
                     ),
-                ],
-              ),
 
-              trailing: IconButton(
-                icon: const Icon(
-                  Icons.delete,
-                  color: Colors.redAccent,
-                ),
+                  // 🔽 FILTRO TAGS
+                  if (selectedFilter == "tags")
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(uid)
+                            .collection('notes')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const SizedBox();
+                          }
 
-                onPressed: () async {
-                  await docs[index]
-                      .reference
-                      .delete();
-                      
+                          final docs = snapshot.data!.docs;
+                          final allTags = <String>{};
+
+                          for (var doc in docs) {
+                            final tags = (doc['tags'] ?? []) as List;
+                            allTags.addAll(tags.cast<String>());
+                          }
+
+                          return Wrap(
+                            spacing: 6,
+                            children: allTags.map((tag) {
+                              return ChoiceChip(
+                                label: Text(tag),
+                                selected: selectedTag == tag,
+                                onSelected: (_) {
+                                  setState(() {
+                                    selectedTag = tag;
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ),
+
+                  // 🆕 BOTÓN BORRAR SELECCIONADAS
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.delete),
+                        label: Text(
+                          "Borrar seleccionadas (${selectedNotes.length})",
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedNotes.isEmpty
+                              ? Colors.grey
+                              : Colors.redAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: selectedNotes.isEmpty
+                            ? null
+                            : () async {
+                                for (final id in selectedNotes) {
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(uid)
+                                      .collection('notes')
+                                      .doc(id)
+                                      .delete();
+                                }
+
+                                setState(() {
+                                  selectedNotes.clear();
+                                });
+                              },
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // 📋 LISTA
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(uid)
+                          .collection('notes')
+                          .orderBy('createdAt', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        final notes = snapshot.data!.docs;
+
+                        return ListView.builder(
+                          itemCount: notes.length,
+                          itemBuilder: (context, index) {
+                            final data =
+                                notes[index].data() as Map<String, dynamic>;
+
+                            final text = (data['text'] ?? '').toLowerCase();
+                            final tags = (data['tags'] ?? []) as List;
+                            final priority = (data['priority'] ?? '');
+                            final done = data['done'] ?? false;
+
+                            if (searchText.isNotEmpty &&
+                                !text.contains(searchText)) {
+                              return const SizedBox.shrink();
+                            }
+
+                            if (selectedFilter == "priority") {
+                              if (selectedPriority != "all" &&
+                                  priority != selectedPriority) {
+                                return const SizedBox.shrink();
+                              }
+                            }
+
+                            if (selectedFilter == "tags") {
+                              if (selectedTag.isNotEmpty &&
+                                  !tags.contains(selectedTag)) {
+                                return const SizedBox.shrink();
+                              }
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.06),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Checkbox(
+                                    value: selectedNotes.contains(
+                                      notes[index].id,
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        if (value == true) {
+                                          selectedNotes.add(notes[index].id);
+                                        } else {
+                                          selectedNotes.remove(notes[index].id);
+                                        }
+                                      });
                                     },
                                   ),
-                                
+                                  IconButton(
+                                    icon: Icon(
+                                      done
+                                          ? Icons.check_circle
+                                          : Icons.circle_outlined,
+                                      color: done
+                                          ? Colors.greenAccent
+                                          : Colors.white54,
+                                    ),
+                                    onPressed: () {
+                                      notes[index].reference.update({
+                                        'done': !done,
+                                      });
+                                    },
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      data['text'] ?? '',
+                                      style: TextStyle(
+                                        color: done
+                                            ? Colors.white38
+                                            : Colors.white,
+                                        decoration: done
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () {
+                                      notes[index].reference.delete();
+                                    },
+                                  ),
+                                ],
                               ),
                             );
                           },
