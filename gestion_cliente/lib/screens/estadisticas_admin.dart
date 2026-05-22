@@ -18,7 +18,7 @@ class _EstadisticasAdminState extends State<EstadisticasAdmin>
   bool   _loading = true;
   String? _negocio;
   List<Map<String, dynamic>> _clases   = [];
-  List<Map<String, dynamic>> _reservas = [];
+  final List<Map<String, dynamic>> _reservas = [];
 
   // Animación de entrada
   late AnimationController _entryCtrl;
