@@ -346,7 +346,7 @@ onTapCancel: () => setState(() {
                         ),
                       ),
                     );
-                  }).toList(),
+                  })
                 ],
               ),
             ),
