@@ -625,7 +625,7 @@ class WorkerProfilePage extends StatelessWidget {
     Set<String> selectedNotes = {};
   }
 
-     void _showContactAdmin(BuildContext context, String uid) async {
+     void _showContactAdmin(BuildContext context, String uid) {
   final subjectController = TextEditingController();
   final messageController = TextEditingController();
 
@@ -653,14 +653,16 @@ class WorkerProfilePage extends StatelessWidget {
             top: Radius.circular(30),
           ),
         ),
+
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+
             const Text(
-              "Enviar correo al administrador",
+              "Mensaje al administrador",
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -673,15 +675,18 @@ class WorkerProfilePage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: TextField(
                 controller: messageController,
-                maxLines: 5,
+                maxLines: 6,
                 style: const TextStyle(color: Colors.white),
+
                 decoration: InputDecoration(
                   hintText: "Escribe tu mensaje...",
                   hintStyle:
                       const TextStyle(color: Colors.white54),
+
                   filled: true,
                   fillColor:
                       Colors.white.withValues(alpha: 0.05),
+
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -690,43 +695,72 @@ class WorkerProfilePage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,
+
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.send),
-                label: const Text("Enviar correo"),
+
+                label: const Text(
+                  "Enviar mensaje",
+                ),
+
                 onPressed: () async {
-                  if (subjectController.text.trim().isEmpty ||
-                      messageController.text.trim().isEmpty) {
+
+                  final subject =
+                      subjectController.text.trim();
+
+                  final message =
+                      messageController.text.trim();
+
+                  if (subject.isEmpty || message.isEmpty) {
                     return;
                   }
 
-                  await FirebaseFirestore.instance
-                      .collection('emails_admin')
-                      .add({
-                    'workerId': uid,
-                    'subject':
-                        subjectController.text.trim(),
-                    'message':
-                        messageController.text.trim(),
-                    'createdAt':
-                        FieldValue.serverTimestamp(),
-                    'status': 'pendiente',
-                  });
+                  try {
 
-                  if (!context.mounted) return;
+                    await FirebaseFirestore.instance
+                        .collection('internal_messages')
+                        .add({
 
-                  Navigator.pop(context);
+                      'fromId': uid,
+                      'toRole': 'admin',
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Correo enviado al administrador",
+                      'subject': subject,
+                      'message': message,
+
+                      'createdAt':
+                          FieldValue.serverTimestamp(),
+
+                      'read': false,
+                    });
+
+                    if (!context.mounted) return;
+
+                    Navigator.pop(context);
+
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          "Mensaje enviado al administrador",
+                        ),
                       ),
-                    ),
-                  );
+                    );
+
+                  } catch (e) {
+
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          "Error: $e",
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             ),
