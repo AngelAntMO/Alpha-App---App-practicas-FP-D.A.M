@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_admin.dart';
+import 'reservas_admin.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InicioAdmin extends StatefulWidget {
   const InicioAdmin({super.key});
@@ -11,6 +13,7 @@ class InicioAdmin extends StatefulWidget {
 
 class _InicioAdminState extends State<InicioAdmin>
     with TickerProviderStateMixin {
+  String? negocioID;
   late AnimationController _controller;
   late Animation<double> _animation;
   late Animation<double> _glowAnimation;
@@ -31,6 +34,8 @@ class _InicioAdminState extends State<InicioAdmin>
   @override
   void initState() {
     super.initState();
+
+    obtenerNegocioAdmin();
 
     _controller = AnimationController(
       vsync: this,
@@ -140,6 +145,37 @@ class _InicioAdminState extends State<InicioAdmin>
       }
     });
   }
+
+  // Para obtener el negocio del admin logeado.
+Future<void> obtenerNegocioAdmin() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      debugPrint("Usuario no logueado");
+      return;
+    }
+
+    final uid = user.uid;
+
+    final query = await FirebaseFirestore.instance
+        .collection('negocios')
+        .where('encargadoID', isEqualTo: uid)
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      setState(() {
+        negocioID = query.docs.first.id;
+      });
+    } else {
+      debugPrint("No hay negocio para este admin");
+    }
+
+  } catch (e) {
+    debugPrint("ERROR FIREBASE: $e");
+  }
+}
 
   // Esto es para liberar memoria y evitar la estupenda ventana roja de error de flutter.
   @override
@@ -270,7 +306,26 @@ class _InicioAdminState extends State<InicioAdmin>
                               child: _AdminCard(
                                 icon: Icons.people,
                                 title: "Usuarios",
-                                onTap: () {},
+                                onTap: () {
+                                  if (negocioID == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Cargando negocio...'),
+                                      ),
+                                    );
+
+                                    return;
+                                  }
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ReservasClasePage(
+                                        negocioID: negocioID!,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),
