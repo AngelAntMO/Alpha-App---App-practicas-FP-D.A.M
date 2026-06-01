@@ -344,7 +344,7 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen>
       backgroundColor: const Color(0xFF1E293B),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text("⏱ Fichaje trabajador"),
+        title: const Text(" Fichaje trabajador"),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -362,7 +362,7 @@ class _WorkerCheckScreenState extends State<WorkerCheckScreen>
                   children: [
 
                     Text(
-                      "👋 $name $surname",
+                      "$name $surname",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,

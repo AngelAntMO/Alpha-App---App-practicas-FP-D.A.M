@@ -64,7 +64,7 @@ class RootPage extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-
+  
         // Si no esta logueado, mostrar login
         if (!snapshot.hasData) {
           return const LoginPage();

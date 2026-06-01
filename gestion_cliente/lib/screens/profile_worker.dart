@@ -118,7 +118,10 @@ class WorkerProfilePage extends StatelessWidget {
                             ),
                             title: const Text(
                               "Cerrar sesión",
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             content: const Text(
                               "¿Estás seguro de que quieres cerrar sesión?",
@@ -126,9 +129,7 @@ class WorkerProfilePage extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context, false);
-                                },
+                                onPressed: () => Navigator.pop(context, false),
                                 child: const Text(
                                   "Cancelar",
                                   style: TextStyle(color: Colors.white70),
@@ -137,30 +138,26 @@ class WorkerProfilePage extends StatelessWidget {
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.redAccent,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                                onPressed: () {
-                                  Navigator.pop(context, true);
-                                },
-                                child: const Text(
-                                  "Cerrar sesión",
-                                  style: TextStyle(color: Colors.white),
-                                ),
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Cerrar sesión"),
                               ),
                             ],
                           );
                         },
                       );
 
-                      if (confirmar == true) {
-                        await FirebaseAuth.instance.signOut();
+                      if (confirmar != true) return;
 
-                        if (!context.mounted) return;
+                      await FirebaseAuth.instance.signOut();
 
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => const RootPage()),
-                          (route) => false,
-                        );
-                      }
+                      if (!context.mounted) return;
+
+                      Navigator.of(context).popUntil((route) => route.isFirst);
                     },
                   ),
 
