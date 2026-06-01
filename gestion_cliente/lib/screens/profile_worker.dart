@@ -120,71 +120,63 @@
 
                     const SizedBox(height: 25),
 
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 40),
-                      child: Divider(color: Colors.white10),
-                    ),
+                  const SizedBox(height: 25),
 
-                    const SizedBox(height: 25),
-
-                    AnimatedLogoutButton(
-                      text: "Cerrar sesión",
-                      onTap: () async {
-                        final bool? confirmar = await showDialog<bool>(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              backgroundColor: const Color(0xFF1E293B),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                  AnimatedLogoutButton(
+                    text: "Cerrar sesión",
+                    onTap: () async {
+                      final bool? confirmar = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            backgroundColor: const Color(0xFF1E293B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            title: const Text(
+                              "Cerrar sesión",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
-                              title: const Text(
-                                "Cerrar sesión",
-                                style: TextStyle(color: Colors.white),
+                            ),
+                            content: const Text(
+                              "¿Estás seguro de que quieres cerrar sesión?",
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text(
+                                  "Cancelar",
+                                  style: TextStyle(color: Colors.white70),
+                                ),
                               ),
-                              content: const Text(
-                                "¿Estás seguro de que quieres cerrar sesión?",
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context, false);
-                                  },
-                                  child: const Text(
-                                    "Cancelar",
-                                    style: TextStyle(color: Colors.white70),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.redAccent,
-                                  ),
-                                  onPressed: () {
-                                    Navigator.pop(context, true);
-                                  },
-                                  child: const Text(
-                                    "Cerrar sesión",
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-
-                        if (confirmar == true) {
-                          await FirebaseAuth.instance.signOut();
-
-                          if (!context.mounted) return;
-
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const RootPage()),
-                            (route) => false,
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Cerrar sesión"),
+                              ),
+                            ],
                           );
-                        }
-                      },
-                    ),
+                        },
+                      );
+
+                      if (confirmar != true) return;
+
+                      await FirebaseAuth.instance.signOut();
+
+                      if (!context.mounted) return;
+
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                  ),
 
                     const SizedBox(height: 50),
                   ],
