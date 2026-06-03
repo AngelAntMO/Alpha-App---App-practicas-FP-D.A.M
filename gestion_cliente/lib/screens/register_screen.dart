@@ -32,6 +32,18 @@ class _RegisterPageState extends State<RegisterPage> {
     "Fisioterapia": false,
     "Academia": false,
   };
+  @override
+  void dispose() {
+    nombreController.dispose();
+    apellidoController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    telefonoController.dispose();
+    direccionController.dispose();
+    edadController.dispose();
+    super.dispose();
+  }
 
   Future<void> register() async {
     if (passwordController.text != confirmPasswordController.text) {
@@ -238,7 +250,6 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
     );
   }
-
 
   Widget _glassField(Widget child) {
     return ClipRRect(
