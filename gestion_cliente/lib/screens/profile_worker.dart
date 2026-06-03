@@ -8,6 +8,27 @@
   class WorkerProfilePage extends StatelessWidget {
     const WorkerProfilePage({super.key});
 
+    Future<void> _markMessagesAsRead(String uid) async {
+  final messages = await FirebaseFirestore.instance
+      .collection('worker_messages')
+      .where('employeeId', isEqualTo: uid)
+      .where('read', isEqualTo: false)
+      .get();
+
+  for (final doc in messages.docs) {
+    await doc.reference.update({'read': true});
+  }
+}
+
+    Stream<int> _unreadMessagesStream(String uid) {
+  return FirebaseFirestore.instance
+      .collection('worker_messages')
+      .where('employeeId', isEqualTo: uid)
+      .where('read', isEqualTo: false)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
+}
+
     final List<String> avatarOptions = const [
       "assets/images/moureperfil.png",
       "assets/images/acaperfil.png",
@@ -78,16 +99,37 @@
                       },
                     ),
 
-                  AnimatedMenuButton(
-                      icon: Icons.mail_outline,
-                      title: "Mis mensajes",
-                      onTap: () {
-                        if (user != null) {
-                          _showInternalMessages(context, user.uid);
-                        }
-                      },
-                    ),
-                    
+                 StreamBuilder<int>(
+  stream: _unreadMessagesStream(user!.uid),
+  builder: (context, snapshot) {
+    final unread = snapshot.data ?? 0;
+
+    return AnimatedMenuButton(
+      icon: Icons.mail_outline,
+      title: "Mis mensajes",
+      onTap: () {
+        _markMessagesAsRead(user.uid); // 👈 NUEVO
+        _showInternalMessages(context, user.uid);
+      },
+      trailing: unread > 0
+          ? Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                unread > 9 ? "9+" : "$unread",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                ),
+              ),
+            )
+          : null,
+    );
+  },
+),
                     AnimatedMenuButton(
                       icon: Icons.work_outline,
                       title: "Mis tareas",
@@ -1424,20 +1466,22 @@
   }
 
   class AnimatedMenuButton extends StatefulWidget {
-    final IconData icon;
-    final String title;
-    final VoidCallback onTap;
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final Widget? trailing; // 👈 FIX
 
-    const AnimatedMenuButton({
-      super.key,
-      required this.icon,
-      required this.title,
-      required this.onTap,
-    });
+  const AnimatedMenuButton({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.trailing,
+  });
 
-    @override
-    State<AnimatedMenuButton> createState() => _AnimatedMenuButtonState();
-  }
+  @override
+  State<AnimatedMenuButton> createState() => _AnimatedMenuButtonState();
+}
 
   class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
     bool pressed = false;
@@ -1496,13 +1540,17 @@
                           ),
                         ),
 
-                        const Spacer(),
+                       const Spacer(),
 
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.white24,
-                          size: 14,
-                        ),
+if (widget.trailing != null) widget.trailing!,
+
+const SizedBox(width: 8),
+
+const Icon(
+  Icons.arrow_forward_ios,
+  color: Colors.white24,
+  size: 14,
+),
                       ],
                     ),
                   ),
