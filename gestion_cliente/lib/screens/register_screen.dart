@@ -239,7 +239,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // 🔥 GLASS WRAPPER
+
   Widget _glassField(Widget child) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
