@@ -828,7 +828,7 @@ class _YogaPageState extends State<YogaPage> {
                               return null;
                             }
 
-                            Color color = const Color.fromARGB(255, 0, 255, 157);
+                            Color color = Colors.orange;
 
                             if (estado == 'verde') {
                               color = Colors.green;
@@ -977,7 +977,7 @@ class _YogaPageState extends State<YogaPage> {
                               colors: [
                                 Color(0xFF1E293B),
                                 Color.fromARGB(255, 11, 51, 54),
-                                Color.fromARGB(255, 12, 190, 176),
+                                Color(0xFF64B5F6),
                               ],
                             ),
 
