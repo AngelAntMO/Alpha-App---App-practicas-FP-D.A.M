@@ -15,8 +15,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController apellidoController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
   final TextEditingController telefonoController = TextEditingController();
   final TextEditingController direccionController = TextEditingController();
   final TextEditingController edadController = TextEditingController();
@@ -46,6 +45,16 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> register() async {
+    // Validación básica de campos vacíos
+    if (emailController.text.trim().isEmpty ||
+        passwordController.text.trim().isEmpty ||
+        nombreController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, rellena los campos obligatorios')),
+      );
+      return;
+    }
+
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Las contraseñas no coinciden')),
@@ -90,23 +99,24 @@ class _RegisterPageState extends State<RegisterPage> {
 
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      String mensaje = 'Error';
+      String mensaje = 'Ocurrió un error inesperado';
 
       if (e.code == 'email-already-in-use') {
         mensaje = 'El email ya está en uso';
       } else if (e.code == 'weak-password') {
         mensaje = 'La contraseña es muy débil';
+      } else if (e.code == 'invalid-email') {
+        mensaje = 'El formato del email no es válido';
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(mensaje)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
-
-    if (!mounted) return;
-    setState(() => loading = false);
   }
 
   @override
@@ -134,43 +144,22 @@ class _RegisterPageState extends State<RegisterPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-
-                  _glassField(_input(nombreController, "Nombre", Icons.person)),
+                  _glassField(_input(nombreController, "Nombre *", Icons.person)),
                   const SizedBox(height: 12),
-
-                  _glassField(
-                    _input(
-                      apellidoController,
-                      "Apellidos",
-                      Icons.person_outline,
-                    ),
-                  ),
+                  _glassField(_input(apellidoController, "Apellidos", Icons.person_outline)),
                   const SizedBox(height: 12),
-
-                  _glassField(_input(emailController, "Email", Icons.email)),
+                  _glassField(_input(emailController, "Email *", Icons.email)),
                   const SizedBox(height: 12),
-
-                  _glassField(
-                    _input(telefonoController, "Teléfono", Icons.phone),
-                  ),
+                  _glassField(_input(telefonoController, "Teléfono", Icons.phone)),
                   const SizedBox(height: 12),
-
-                  _glassField(
-                    _input(direccionController, "Dirección", Icons.location_on),
-                  ),
+                  _glassField(_input(direccionController, "Dirección", Icons.location_on)),
                   const SizedBox(height: 12),
-
-                  _glassField(
-                    _input(edadController, "Edad", Icons.cake, number: true),
-                  ),
+                  _glassField(_input(edadController, "Edad", Icons.cake, number: true)),
                   const SizedBox(height: 12),
-
                   _glassField(_passwordField()),
                   const SizedBox(height: 12),
-
                   _glassField(_confirmPasswordField()),
                   const SizedBox(height: 20),
-
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -181,9 +170,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
                   ...negocios.keys.map((key) {
                     return CheckboxListTile(
                       activeColor: Colors.blueAccent,
@@ -197,9 +184,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       },
                     );
                   }),
-
                   const SizedBox(height: 20),
-
                   GestureDetector(
                     onTap: loading ? null : register,
                     child: Container(
@@ -240,7 +225,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 30),
                 ],
               ),
@@ -268,7 +252,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // INPUT SIMPLE
   Widget _input(
     TextEditingController c,
     String label,
@@ -280,8 +263,8 @@ class _RegisterPageState extends State<RegisterPage> {
       keyboardType: number ? TextInputType.number : TextInputType.text,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
+        hintText: label, // Cambiado de labelText a hintText
+        hintStyle: const TextStyle(color: Colors.white70),
         prefixIcon: Icon(icon, color: Colors.white70),
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(
@@ -292,14 +275,15 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // INPUT CONTRASEÑA
   Widget _passwordField() {
     return TextField(
       controller: passwordController,
       obscureText: isPasswordHidden,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        labelText: "Contraseña",
-        labelStyle: const TextStyle(color: Colors.white70),
+        hintText: "Contraseña *", // Cambiado de labelText a hintText
+        hintStyle: const TextStyle(color: Colors.white70),
         prefixIcon: const Icon(Icons.lock, color: Colors.white70),
         suffixIcon: IconButton(
           icon: Icon(
@@ -317,14 +301,15 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // INPUT CONFIRMAR CONTRASEÑA 
   Widget _confirmPasswordField() {
     return TextField(
       controller: confirmPasswordController,
       obscureText: isConfirmPasswordHidden,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        labelText: "Confirmar contraseña",
-        labelStyle: const TextStyle(color: Colors.white70),
+        hintText: "Confirmar contraseña *", // Cambiado de labelText a hintText
+        hintStyle: const TextStyle(color: Colors.white70),
         prefixIcon: const Icon(Icons.lock, color: Colors.white70),
         suffixIcon: IconButton(
           icon: Icon(
