@@ -2,7 +2,8 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gestion_cliente/screens/inicio_worker.dart';
+
+import 'package:gestion_cliente/screens/root_page.dart';
 
 class WorkerProfilePage extends StatelessWidget {
   const WorkerProfilePage({super.key});
@@ -67,11 +68,7 @@ class WorkerProfilePage extends StatelessWidget {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => InicioWorker()),
-                (route) => false,
-              );
+              Navigator.of(context).pop();
             },
           ),
         ),
@@ -190,13 +187,16 @@ class WorkerProfilePage extends StatelessWidget {
                         },
                       );
 
-                      if (confirmar != true) return;
+                    if (confirmar != true) return;
 
-                      await FirebaseAuth.instance.signOut();
+                    if (!context.mounted) return;
 
-                      if (!context.mounted) return;
-
-                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    await FirebaseAuth.instance.signOut();
+                    if (!context.mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const RootPage()),
+                      (route) => false,
+                    );
                     },
                   ),
                   const SizedBox(height: 50),

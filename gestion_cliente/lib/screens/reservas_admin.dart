@@ -1,10 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ReservasClasePage extends StatefulWidget {
-  final String negocioID;
-
-  const ReservasClasePage({super.key, required this.negocioID});
+  const ReservasClasePage({super.key});
 
   @override
   State<ReservasClasePage> createState() => _ReservasClasePageState();
@@ -13,6 +12,11 @@ class ReservasClasePage extends StatefulWidget {
 class _ReservasClasePageState extends State<ReservasClasePage> {
   String? claseSeleccionada;
   String filtroEstado = 'todas';
+
+  String? _negocioID; 
+  bool _cargandoNegocio = true;
+  String? _errorNegocio;
+
   late Future<QuerySnapshot> _clasesFuture;
 
   // Cache en memoria para evitar llamadas duplicadas a la colección de usuarios
@@ -21,21 +25,78 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
   @override
   void initState() {
     super.initState();
-    // Almacenamos el Future aquí para que SOLO se ejecute una vez al abrir la pantalla
-    _clasesFuture = FirebaseFirestore.instance
-        .collection('clases')
-        .where('negocioID', isEqualTo: widget.negocioID)
-        .get();
+    _inicializarPagina();
+  }
+
+  Future<void> _inicializarPagina() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() {
+          _errorNegocio = 'Usuario no autenticado';
+          _cargandoNegocio = false;
+        });
+        return;
+      }
+
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      
+      if (!doc.exists) {
+        setState(() {
+          _errorNegocio = 'Datos de usuario no encontrados en la base de datos';
+          _cargandoNegocio = false;
+        });
+        return;
+      }
+
+      final data = doc.data();
+      String? negocioID;
+
+      // Usamos 'negocios' en plural como me confirmaste
+      final campoNegocio = data?['negocios'];
+
+      if (campoNegocio is List) {
+        if (campoNegocio.isNotEmpty) {
+          negocioID = campoNegocio.first.toString().trim();
+        }
+      } else if (campoNegocio != null) {
+        negocioID = campoNegocio.toString().trim();
+      }
+
+      if (negocioID == null || negocioID.isEmpty) {
+        setState(() {
+          _errorNegocio = 'El usuario existe, pero el campo "negocios" está vacío o no se encuentra.';
+          _cargandoNegocio = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _negocioID = negocioID; 
+        // Buscamos las clases (aquí mantengo negocioID, si tu colección 'clases' también usa negocioNombre, cámbialo aquí abajo)
+        _clasesFuture = FirebaseFirestore.instance
+            .collection('clases')
+            .where('negocioID', isEqualTo: negocioID)
+            .get();
+        _cargandoNegocio = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorNegocio = 'Error al cargar datos del negocio: $e';
+        _cargandoNegocio = false;
+      });
+    }
   }
 
   Future<void> borrarFinalizadas() async {
-    if (claseSeleccionada == null) return;
+    if (claseSeleccionada == null || _negocioID == null) return;
 
     try {
       final query = await FirebaseFirestore.instance
           .collection('reservas')
+          .where('negocioNombre', isEqualTo: _negocioID) // <--- CAMBIADO A negocioNombre
           .where('claseNombre', isEqualTo: claseSeleccionada)
-          .where('estado', isEqualTo: 'finalizada') // Filtro directo en servidor
+          .where('estado', isEqualTo: 'finalizada') 
           .get();
 
       if (query.docs.isEmpty) {
@@ -65,7 +126,6 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
     );
   }
 
-  // Método optimizado para obtener datos del usuario usando caché local
   Future<Map<String, dynamic>> _obtenerDatosUsuario(String userId) async {
     if (_usuariosCache.containsKey(userId)) {
       return _usuariosCache[userId]!;
@@ -79,7 +139,7 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
       'email': ''
     };
     
-    _usuariosCache[userId] = data; // Guardamos en caché
+    _usuariosCache[userId] = data; 
     return data;
   }
 
@@ -105,214 +165,227 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
           ),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  /// SELECTOR DE CLASES (Optimizado con variable del initState)
-                  FutureBuilder<QuerySnapshot>(
-                    future: _clasesFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const CircularProgressIndicator();
-                      }
-                      if (snapshot.hasError) {
-                        return Center(child: SelectableText('ERROR:\n${snapshot.error}'));
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Text('No hay clases disponibles', style: TextStyle(color: Colors.white));
-                      }
-
-                      final clases = snapshot.data!.docs;
-
-                      return DropdownButtonFormField<String>(
-                        value: claseSeleccionada,
-                        decoration: _buildInputDecoration('Selecciona una clase'),
-                        style: const TextStyle(color: Colors.white),
-                        dropdownColor: const Color(0xFF1E293B),
-                        iconEnabledColor: Colors.lightBlueAccent,
-                        items: clases.map((doc) {
-                          final data = doc.data() as Map<String, dynamic>;
-                          final nombre = data['nombre'] ?? '';
-                          return DropdownMenuItem<String>(
-                            value: nombre,
-                            child: Text(nombre),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            claseSeleccionada = value;
-                          });
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 15),
-
-                  Wrap(
-                    spacing: 10,
-                    children: [
-                      _FiltroButton(
-                        label: 'Todas',
-                        selected: filtroEstado == 'todas',
-                        onTap: () => setState(() => filtroEstado = 'todas'),
-                      ),
-                      _FiltroButton(
-                        label: 'Activas',
-                        selected: filtroEstado == 'activas',
-                        onTap: () => setState(() => filtroEstado = 'activas'),
-                      ),
-                      _FiltroButton(
-                        label: 'Finalizadas',
-                        selected: filtroEstado == 'finalizadas',
-                        onTap: () => setState(() => filtroEstado = 'finalizadas'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      final confirm = await _mostrarDialogoConfirmacion();
-                      if (confirm == true) {
-                        borrarFinalizadas();
-                      }
-                    },
-                    icon: const Icon(Icons.delete_outline, color: Colors.lightBlueAccent),
-                    label: const Text('Borrar finalizadas', style: TextStyle(color: Colors.white)),
-                    style: _buildBotondeBorradoStyle(),
-                  ),
-                  const SizedBox(height: 10),
-
-                  /// LISTA DE RESERVAS
-                  if (claseSeleccionada != null)
-                    Flexible(
-                      child: StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('reservas')
-                            .where('claseNombre', isEqualTo: claseSeleccionada)
-                            .orderBy('fechaHora')
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          }
-                          if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
-                          }
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Center(
-                              child: Text(
-                                'No hay reservas para esta clase',
-                                style: TextStyle(color: Colors.white70, fontSize: 16),
-                              ),
-                            );
-                          }
-
-                          // Filtrado en memoria eficiente
-                          final reservas = snapshot.data!.docs.where((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            final estado = data['estado'] ?? '';
-                            if (filtroEstado == 'todas') return true;
-                            if (filtroEstado == 'activas') return estado != 'finalizada';
-                            return estado == 'finalizada';
-                          }).toList();
-
-                          if (reservas.isEmpty) {
-                            return const Center(child: Text('No hay reservas con este filtro', style: TextStyle(color: Colors.white70)));
-                          }
-
-                          return ListView.builder(
-                            itemCount: reservas.length,
-                            itemBuilder: (context, index) {
-                              final resDoc = reservas[index];
-                              final reserva = resDoc.data() as Map<String, dynamic>;
-                              final userId = reserva['userId'] ?? '';
-
-                              return FutureBuilder<Map<String, dynamic>>(
-                                future: _obtenerDatosUsuario(userId),
-                                builder: (context, userSnapshot) {
-                                  if (userSnapshot.connectionState == ConnectionState.waiting) {
-                                    return const Card(
-                                      color: Colors.white10,
-                                      child: Padding(
-                                        padding: EdgeInsets.all(16.0),
-                                        child: Text('Cargando datos de usuario...', style: TextStyle(color: Colors.white70)),
-                                      ),
-                                    );
-                                  }
-
-                                  final user = userSnapshot.data!;
-                                  final nombre = user['nombre'] ?? '';
-                                  final apellidos = user['apellidos'] ?? '';
-                                  final telefono = user['telefono'] ?? '';
-                                  final email = user['email'] ?? '';
-
-                                  final estado = reserva['estado'] ?? '';
-                                  final hora = reserva['hora'] ?? '';
-                                  final fechaTimestamp = reserva['fechaHora'] as Timestamp?;
-                                  final fecha = fechaTimestamp?.toDate() ?? DateTime.now();
-
-                                  return ReservaCard(
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const CircleAvatar(
-                                            radius: 22,
-                                            backgroundColor: Colors.transparent,
-                                            child: Icon(Icons.person, color: Colors.lightBlueAccent),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '$nombre $apellidos',
-                                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text('📧 $email', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
-                                                Text('📞 $telefono', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
-                                                const SizedBox(height: 6),
-                                                Text('🕒 $hora', style: const TextStyle(color: Colors.lightBlueAccent)),
-                                                Text('📅 ${fecha.day}/${fecha.month}/${fecha.year}', style: const TextStyle(color: Colors.lightBlueAccent)),
-                                                const SizedBox(height: 6),
-                                                _buildEstadoBadge(estado),
-                                              ],
-                                            ),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'Eliminar reserva',
-                                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                            onPressed: () => _eliminarReservaIndividual(resDoc.reference),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
+        body: _cargandoNegocio
+            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            : _errorNegocio != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        _errorNegocio!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-        ),
+                  )
+                : Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            /// SELECTOR DE CLASES
+                            FutureBuilder<QuerySnapshot>(
+                              future: _clasesFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const CircularProgressIndicator();
+                                }
+                                if (snapshot.hasError) {
+                                  return Center(child: SelectableText('ERROR:\n${snapshot.error}'));
+                                }
+                                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                  return const Text('No hay clases disponibles', style: TextStyle(color: Colors.white));
+                                }
+
+                                final clases = snapshot.data!.docs;
+
+                                return DropdownButtonFormField<String>(
+                                  initialValue: claseSeleccionada,
+                                  decoration: _buildInputDecoration('Selecciona una clase'),
+                                  style: const TextStyle(color: Colors.white),
+                                  dropdownColor: const Color(0xFF1E293B),
+                                  iconEnabledColor: Colors.lightBlueAccent,
+                                  items: clases.map((doc) {
+                                    final data = doc.data() as Map<String, dynamic>;
+                                    final nombre = data['nombre'] ?? '';
+                                    return DropdownMenuItem<String>(
+                                      value: nombre,
+                                      child: Text(nombre),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      claseSeleccionada = value;
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 15),
+
+                            Wrap(
+                              spacing: 10,
+                              children: [
+                                _FiltroButton(
+                                  label: 'Todas',
+                                  selected: filtroEstado == 'todas',
+                                  onTap: () => setState(() => filtroEstado = 'todas'),
+                                ),
+                                _FiltroButton(
+                                  label: 'Activas',
+                                  selected: filtroEstado == 'activas',
+                                  onTap: () => setState(() => filtroEstado = 'activas'),
+                                ),
+                                _FiltroButton(
+                                  label: 'Finalizadas',
+                                  selected: filtroEstado == 'finalizadas',
+                                  onTap: () => setState(() => filtroEstado = 'finalizadas'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final confirm = await _mostrarDialogoConfirmacion();
+                                if (confirm == true) {
+                                  borrarFinalizadas();
+                                }
+                              },
+                              icon: const Icon(Icons.delete_outline, color: Colors.lightBlueAccent),
+                              label: const Text('Borrar finalizadas', style: TextStyle(color: Colors.white)),
+                              style: _buildBotondeBorradoStyle(),
+                            ),
+                            const SizedBox(height: 10),
+
+                            /// LISTA DE RESERVAS
+                            if (claseSeleccionada != null)
+                              Flexible(
+                                child: StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('reservas')
+                                      .where('negocioNombre', isEqualTo: _negocioID) // <--- CAMBIADO A negocioNombre
+                                      .where('claseNombre', isEqualTo: claseSeleccionada)
+                                      .orderBy('fechaHora')
+                                      .snapshots(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return const Center(child: CircularProgressIndicator());
+                                    }
+                                    if (snapshot.hasError) {
+                                      return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+                                    }
+                                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                      return const Center(
+                                        child: Text(
+                                          'No hay reservas para esta clase',
+                                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                                        ),
+                                      );
+                                    }
+
+                                    final reservas = snapshot.data!.docs.where((doc) {
+                                      final data = doc.data() as Map<String, dynamic>;
+                                      final estado = data['estado'] ?? '';
+                                      if (filtroEstado == 'todas') return true;
+                                      if (filtroEstado == 'activas') return estado != 'finalizada';
+                                      return estado == 'finalizada';
+                                    }).toList();
+
+                                    if (reservas.isEmpty) {
+                                      return const Center(child: Text('No hay reservas con este filtro', style: TextStyle(color: Colors.white70)));
+                                    }
+
+                                    return ListView.builder(
+                                      itemCount: reservas.length,
+                                      itemBuilder: (context, index) {
+                                        final resDoc = reservas[index];
+                                        final reserva = resDoc.data() as Map<String, dynamic>;
+                                        final userId = reserva['userId'] ?? '';
+
+                                        return FutureBuilder<Map<String, dynamic>>(
+                                          future: _obtenerDatosUsuario(userId),
+                                          builder: (context, userSnapshot) {
+                                            if (userSnapshot.connectionState == ConnectionState.waiting) {
+                                              return const Card(
+                                                color: Colors.white10,
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(16.0),
+                                                  child: Text('Cargando datos de usuario...', style: TextStyle(color: Colors.white70)),
+                                                ),
+                                              );
+                                            }
+
+                                            final user = userSnapshot.data!;
+                                            final nombre = user['nombre'] ?? '';
+                                            final apellidos = user['apellidos'] ?? '';
+                                            final telefono = user['telefono'] ?? '';
+                                            final email = user['email'] ?? '';
+
+                                            final estado = reserva['estado'] ?? '';
+                                            final hora = reserva['hora'] ?? '';
+                                            final fechaTimestamp = reserva['fechaHora'] as Timestamp?;
+                                            final fecha = fechaTimestamp?.toDate() ?? DateTime.now();
+
+                                            return ReservaCard(
+                                              child: Container(
+                                                margin: const EdgeInsets.only(bottom: 12),
+                                                padding: const EdgeInsets.all(14),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withValues(alpha: 0.08),
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                child: Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    const CircleAvatar(
+                                                      radius: 22,
+                                                      backgroundColor: Colors.transparent,
+                                                      child: Icon(Icons.person, color: Colors.lightBlueAccent),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            '$nombre $apellidos',
+                                                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                                          ),
+                                                          const SizedBox(height: 6),
+                                                          Text('📧 $email', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                                                          Text('📞 $telefono', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                                                          const SizedBox(height: 6),
+                                                          Text('🕒 $hora', style: const TextStyle(color: Colors.lightBlueAccent)),
+                                                          Text('📅 ${fecha.day}/${fecha.month}/${fecha.year}', style: const TextStyle(color: Colors.lightBlueAccent)),
+                                                          const SizedBox(height: 6),
+                                                          _buildEstadoBadge(estado),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      tooltip: 'Eliminar reserva',
+                                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                                      onPressed: () => _eliminarReservaIndividual(resDoc.reference),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
       ),
     );
   }
@@ -420,8 +493,6 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
     }
   }
 }
-
-// --- WIDGETS AUXILIARES MANTELES (Sin cambios drásticos) ---
 
 class ReservaCard extends StatefulWidget {
   final Widget child;
