@@ -44,20 +44,6 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  @override
-  void dispose() {
-    // Evita fugas de memoria liberando los controladores
-    nombreController.dispose();
-    apellidoController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
-    telefonoController.dispose();
-    direccionController.dispose();
-    edadController.dispose();
-    super.dispose();
-  }
-
   Future<void> register() async {
     // Validación básica de campos vacíos
     if (emailController.text.trim().isEmpty ||
