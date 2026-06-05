@@ -7,6 +7,7 @@ import 'login_screen.dart';
 import 'inicio_screen.dart';
 import 'inicio_worker.dart'; 
 
+//Aqui se llega con una sesion abierta,por tanto redirigimos según el rol del usuario conectado.
 class RootPage extends StatelessWidget {
   const RootPage({super.key});
 
@@ -53,43 +54,31 @@ class RootPage extends StatelessWidget {
   }
 }
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-  
-        // Si no esta logueado, mostrar login
-        if (!snapshot.hasData) {
-          return const LoginPage();
-        }
+@override
+Widget build(BuildContext context) {
+  final user = FirebaseAuth.instance.currentUser;
 
-        final user = snapshot.data!;
-
-        // Comprobar el rol de firebase
-        return FutureBuilder<Widget>(
-          future: _getHome(user),
-          builder: (context, roleSnapshot) {
-            if (roleSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (!roleSnapshot.hasData) {
-              return const LoginPage();
-            }
-
-            return roleSnapshot.data!;
-          },
-        );
-      },
-    );
+  if (user == null) {
+    return const LoginPage();
   }
+
+  return FutureBuilder<Widget>(
+    future: _getHome(user),
+    builder: (context, roleSnapshot) {
+      if (roleSnapshot.connectionState == ConnectionState.waiting) {
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      if (!roleSnapshot.hasData) {
+        return const LoginPage();
+      }
+
+      return roleSnapshot.data!;
+    },
+  );
+}
 }

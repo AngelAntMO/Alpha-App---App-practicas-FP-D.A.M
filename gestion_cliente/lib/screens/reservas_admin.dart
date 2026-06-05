@@ -13,6 +13,20 @@ class ReservasClasePage extends StatefulWidget {
 class _ReservasClasePageState extends State<ReservasClasePage> {
   String? claseSeleccionada;
   String filtroEstado = 'todas';
+  late Future<QuerySnapshot> _clasesFuture;
+
+  // Cache en memoria para evitar llamadas duplicadas a la colección de usuarios
+  final Map<String, Map<String, dynamic>> _usuariosCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Almacenamos el Future aquí para que SOLO se ejecute una vez al abrir la pantalla
+    _clasesFuture = FirebaseFirestore.instance
+        .collection('clases')
+        .where('negocioID', isEqualTo: widget.negocioID)
+        .get();
+  }
 
   Future<void> borrarFinalizadas() async {
     if (claseSeleccionada == null) return;
@@ -21,31 +35,24 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
       final query = await FirebaseFirestore.instance
           .collection('reservas')
           .where('claseNombre', isEqualTo: claseSeleccionada)
+          .where('estado', isEqualTo: 'finalizada') // Filtro directo en servidor
           .get();
 
+      if (query.docs.isEmpty) {
+        if (!mounted) return;
+        _showSnack('No hay reservas finalizadas');
+        return;
+      }
+
       final batch = FirebaseFirestore.instance.batch();
-      int count = 0;
-
       for (var doc in query.docs) {
-        final data = doc.data();
-
-        if (data['estado'] == 'finalizada') {
-          batch.delete(doc.reference);
-          count++;
-        }
+        batch.delete(doc.reference);
       }
 
       await batch.commit();
 
       if (!mounted) return;
-
-      _showSnack(
-        count == 0
-            ? 'No hay reservas finalizadas'
-            : '$count reservas eliminadas',
-      );
-
-      setState(() {});
+      _showSnack('${query.docs.length} reservas eliminadas');
     } catch (e) {
       if (!mounted) return;
       _showSnack('Error: $e');
@@ -53,9 +60,27 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  // Método optimizado para obtener datos del usuario usando caché local
+  Future<Map<String, dynamic>> _obtenerDatosUsuario(String userId) async {
+    if (_usuariosCache.containsKey(userId)) {
+      return _usuariosCache[userId]!;
+    }
+
+    final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final data = doc.data() ?? {
+      'nombre': 'Usuario',
+      'apellidos': 'eliminado',
+      'telefono': '',
+      'email': ''
+    };
+    
+    _usuariosCache[userId] = data; // Guardamos en caché
+    return data;
   }
 
   @override
@@ -80,78 +105,43 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
           ),
           iconTheme: const IconThemeData(color: Colors.white),
         ),
-
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: Padding(
               padding: const EdgeInsets.all(16),
-
               child: Column(
                 children: [
-                  /// SELECTOR DE CLASES
+                  /// SELECTOR DE CLASES (Optimizado con variable del initState)
                   FutureBuilder<QuerySnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('clases')
-                        .where('negocioID', isEqualTo: widget.negocioID)
-                        .get(),
-
+                    future: _clasesFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const CircularProgressIndicator();
                       }
-
                       if (snapshot.hasError) {
-                        debugPrint("ERROR FIREBASE: ${snapshot.error}");
-
-                        return Center(
-                          child: SelectableText('ERROR:\n${snapshot.error}'),
-                        );
+                        return Center(child: SelectableText('ERROR:\n${snapshot.error}'));
                       }
-
                       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Text('No hay clases disponibles');
+                        return const Text('No hay clases disponibles', style: TextStyle(color: Colors.white));
                       }
 
                       final clases = snapshot.data!.docs;
 
                       return DropdownButtonFormField<String>(
-                        initialValue: claseSeleccionada,
-
-                        decoration: InputDecoration(
-                          labelText: 'Selecciona una clase',
-                          labelStyle: const TextStyle(color: Colors.white),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.08),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.15),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(
-                              color: Colors.lightBlueAccent,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
+                        value: claseSeleccionada,
+                        decoration: _buildInputDecoration('Selecciona una clase'),
                         style: const TextStyle(color: Colors.white),
                         dropdownColor: const Color(0xFF1E293B),
                         iconEnabledColor: Colors.lightBlueAccent,
-
                         items: clases.map((doc) {
                           final data = doc.data() as Map<String, dynamic>;
-
                           final nombre = data['nombre'] ?? '';
-
                           return DropdownMenuItem<String>(
                             value: nombre,
                             child: Text(nombre),
                           );
                         }).toList(),
-
                         onChanged: (value) {
                           setState(() {
                             claseSeleccionada = value;
@@ -178,79 +168,23 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
                       _FiltroButton(
                         label: 'Finalizadas',
                         selected: filtroEstado == 'finalizadas',
-                        onTap: () =>
-                            setState(() => filtroEstado = 'finalizadas'),
+                        onTap: () => setState(() => filtroEstado = 'finalizadas'),
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
 
                   ElevatedButton.icon(
                     onPressed: () async {
-                      final confirm = await showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          backgroundColor: const Color(0xFF1E293B),
-                          title: const Text(
-                            'Confirmar',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          content: const Text(
-                            '¿Eliminar reservas finalizadas?',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text(
-                                'Cancelar',
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text(
-                                'Eliminar',
-                                style: TextStyle(color: Colors.lightBlueAccent),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-
+                      final confirm = await _mostrarDialogoConfirmacion();
                       if (confirm == true) {
                         borrarFinalizadas();
                       }
                     },
-
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.lightBlueAccent,
-                    ),
-                    label: const Text(
-                      'Borrar finalizadas',
-                      style: TextStyle(color: Colors.white),
-                    ),
-
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent.withValues(alpha: 0.25),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: Colors.redAccent.withValues(alpha: 0.4),
-                        ),
-                      ),
-                    ),
+                    icon: const Icon(Icons.delete_outline, color: Colors.lightBlueAccent),
+                    label: const Text('Borrar finalizadas', style: TextStyle(color: Colors.white)),
+                    style: _buildBotondeBorradoStyle(),
                   ),
-
                   const SizedBox(height: 10),
 
                   /// LISTA DE RESERVAS
@@ -262,320 +196,106 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
                             .where('claseNombre', isEqualTo: claseSeleccionada)
                             .orderBy('fechaHora')
                             .snapshots(),
-
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
                           }
-
                           if (snapshot.hasError) {
-                            return Center(
-                              child: Text('Error: ${snapshot.error}'),
-                            );
+                            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
                           }
-
-                          if (!snapshot.hasData ||
-                              snapshot.data!.docs.isEmpty) {
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                             return const Center(
                               child: Text(
                                 'No hay reservas para esta clase',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: TextStyle(color: Colors.white70, fontSize: 16),
                               ),
                             );
                           }
 
-                          final allReservas = snapshot.data!.docs;
-
-                          final reservas = allReservas.where((doc) {
+                          // Filtrado en memoria eficiente
+                          final reservas = snapshot.data!.docs.where((doc) {
                             final data = doc.data() as Map<String, dynamic>;
-                            final estado = data['estado'];
-
+                            final estado = data['estado'] ?? '';
                             if (filtroEstado == 'todas') return true;
-                            if (filtroEstado == 'activas') {
-                              return estado != 'finalizada';
-                            }
-                            if (filtroEstado == 'finalizadas') {
-                              return estado == 'finalizada';
-                            }
-
-                            return true;
+                            if (filtroEstado == 'activas') return estado != 'finalizada';
+                            return estado == 'finalizada';
                           }).toList();
+
+                          if (reservas.isEmpty) {
+                            return const Center(child: Text('No hay reservas con este filtro', style: TextStyle(color: Colors.white70)));
+                          }
 
                           return ListView.builder(
                             itemCount: reservas.length,
-
                             itemBuilder: (context, index) {
-                              final reserva =
-                                  reservas[index].data()
-                                      as Map<String, dynamic>;
+                              final resDoc = reservas[index];
+                              final reserva = resDoc.data() as Map<String, dynamic>;
+                              final userId = reserva['userId'] ?? '';
 
-                              final userId = reserva['userId'];
-
-                              return FutureBuilder<DocumentSnapshot>(
-                                future: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(userId)
-                                    .get(),
-
+                              return FutureBuilder<Map<String, dynamic>>(
+                                future: _obtenerDatosUsuario(userId),
                                 builder: (context, userSnapshot) {
-                                  if (userSnapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const ListTile(
-                                      title: Text('Cargando usuario...'),
+                                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                                    return const Card(
+                                      color: Colors.white10,
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16.0),
+                                        child: Text('Cargando datos de usuario...', style: TextStyle(color: Colors.white70)),
+                                      ),
                                     );
                                   }
 
-                                  final user =
-                                      userSnapshot.data!.data()
-                                          as Map<String, dynamic>?;
-
-                                  final nombre =
-                                      user?['nombre'] ?? 'Usuario eliminado';
-                                  final apellidos = user?['apellidos'] ?? '';
-                                  final telefono = user?['telefono'] ?? '';
-                                  final email = user?['email'] ?? '';
+                                  final user = userSnapshot.data!;
+                                  final nombre = user['nombre'] ?? '';
+                                  final apellidos = user['apellidos'] ?? '';
+                                  final telefono = user['telefono'] ?? '';
+                                  final email = user['email'] ?? '';
 
                                   final estado = reserva['estado'] ?? '';
                                   final hora = reserva['hora'] ?? '';
-
-                                  final fechaTimestamp =
-                                      reserva['fechaHora'] as Timestamp;
-                                  final fecha = fechaTimestamp.toDate();
+                                  final fechaTimestamp = reserva['fechaHora'] as Timestamp?;
+                                  final fecha = fechaTimestamp?.toDate() ?? DateTime.now();
 
                                   return ReservaCard(
                                     child: Container(
                                       margin: const EdgeInsets.only(bottom: 12),
                                       padding: const EdgeInsets.all(14),
-
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.08,
-                                        ),
+                                        color: Colors.white.withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-
                                       child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           const CircleAvatar(
                                             radius: 22,
                                             backgroundColor: Colors.transparent,
-                                            child: Icon(
-                                              Icons.person,
-                                              color: Colors.lightBlueAccent,
-                                            ),
+                                            child: Icon(Icons.person, color: Colors.lightBlueAccent),
                                           ),
-
                                           const SizedBox(width: 12),
-
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   '$nombre $apellidos',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                                                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                                                 ),
-
                                                 const SizedBox(height: 6),
-
-                                                Text(
-                                                  '📧 $email',
-                                                  style: TextStyle(
-                                                    color: Colors.white
-                                                        .withValues(
-                                                          alpha: 0.75,
-                                                        ),
-                                                  ),
-                                                ),
-
-                                                Text(
-                                                  '📞 $telefono',
-                                                  style: TextStyle(
-                                                    color: Colors.white
-                                                        .withValues(
-                                                          alpha: 0.75,
-                                                        ),
-                                                  ),
-                                                ),
-
+                                                Text('📧 $email', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                                                Text('📞 $telefono', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
                                                 const SizedBox(height: 6),
-
-                                                Text(
-                                                  '🕒 $hora',
-                                                  style: const TextStyle(
-                                                    color:
-                                                        Colors.lightBlueAccent,
-                                                  ),
-                                                ),
-
-                                                Text(
-                                                  '📅 ${fecha.day}/${fecha.month}/${fecha.year}',
-                                                  style: const TextStyle(
-                                                    color:
-                                                        Colors.lightBlueAccent,
-                                                  ),
-                                                ),
-
+                                                Text('🕒 $hora', style: const TextStyle(color: Colors.lightBlueAccent)),
+                                                Text('📅 ${fecha.day}/${fecha.month}/${fecha.year}', style: const TextStyle(color: Colors.lightBlueAccent)),
                                                 const SizedBox(height: 6),
-
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        estado == 'finalizada'
-                                                        ? Colors.amber
-                                                              .withValues(
-                                                                alpha: 0.15,
-                                                              )
-                                                        : Colors.green
-                                                              .withValues(
-                                                                alpha: 0.15,
-                                                              ),
-
-                                                    border: Border.all(
-                                                      color:
-                                                          estado == 'finalizada'
-                                                          ? Colors.amber
-                                                                .withValues(
-                                                                  alpha: 0.4,
-                                                                )
-                                                          : Colors.green
-                                                                .withValues(
-                                                                  alpha: 0.4,
-                                                                ),
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    estado,
-                                                    style: TextStyle(
-                                                      color:
-                                                          estado == 'finalizada'
-                                                          ? Colors.amberAccent
-                                                          : Colors.greenAccent,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
+                                                _buildEstadoBadge(estado),
                                               ],
                                             ),
                                           ),
                                           IconButton(
                                             tooltip: 'Eliminar reserva',
-
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              color: Colors.redAccent,
-                                            ),
-
-                                            onPressed: () async {
-                                              final confirm = await showDialog(
-                                                context: context,
-
-                                                builder: (_) => AlertDialog(
-                                                  backgroundColor: const Color(
-                                                    0xFF1E293B,
-                                                  ),
-
-                                                  title: const Text(
-                                                    'Eliminar reserva',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-
-                                                  content: const Text(
-                                                    '¿Seguro que quieres eliminar esta reserva?',
-                                                    style: TextStyle(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                            false,
-                                                          ),
-
-                                                      child: const Text(
-                                                        'Cancelar',
-                                                        style: TextStyle(
-                                                          color: Colors.white70,
-                                                        ),
-                                                      ),
-                                                    ),
-
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                            true,
-                                                          ),
-
-                                                      child: const Text(
-                                                        'Eliminar',
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors.redAccent,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-
-                                              if (confirm == true) {
-                                                try {
-                                                  await reservas[index]
-                                                      .reference
-                                                      .delete();
-
-                                                  if (context.mounted) {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Reserva eliminada',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                } catch (e) {
-                                                  if (context.mounted) {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          'Error: $e',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              }
-                                            },
+                                            icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                            onPressed: () => _eliminarReservaIndividual(resDoc.reference),
                                           ),
                                         ],
                                       ),
@@ -596,11 +316,115 @@ class _ReservasClasePageState extends State<ReservasClasePage> {
       ),
     );
   }
+
+  // --- MÉTODOS AUXILIARES DE INTERFAZ ---
+
+  InputDecoration _buildInputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.08),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: Colors.lightBlueAccent, width: 1.5),
+      ),
+    );
+  }
+
+  ButtonStyle _buildBotondeBorradoStyle() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: Colors.redAccent.withValues(alpha: 0.25),
+      foregroundColor: Colors.white,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+      ),
+    );
+  }
+
+  Widget _buildEstadoBadge(String estado) {
+    final isFinalizada = estado == 'finalizada';
+    final color = isFinalizada ? Colors.amber : Colors.green;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        estado,
+        style: TextStyle(
+          color: isFinalizada ? Colors.amberAccent : Colors.greenAccent,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _mostrarDialogoConfirmacion() {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+        content: const Text('¿Eliminar reservas finalizadas?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.lightBlueAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _eliminarReservaIndividual(DocumentReference ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Eliminar reserva', style: TextStyle(color: Colors.white)),
+        content: const Text('¿Seguro que quieres eliminar esta reserva?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.delete();
+        _showSnack('Reserva eliminada');
+      } catch (e) {
+        _showSnack('Error: $e');
+      }
+    }
+  }
 }
+
+// --- WIDGETS AUXILIARES MANTELES (Sin cambios drásticos) ---
 
 class ReservaCard extends StatefulWidget {
   final Widget child;
-
   const ReservaCard({super.key, required this.child});
 
   @override
@@ -619,11 +443,7 @@ class _ReservaCardState extends State<ReservaCard> {
         scale: isHovered ? 1.03 : 1.0,
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          child: widget.child,
-        ),
+        child: widget.child,
       ),
     );
   }
@@ -649,14 +469,10 @@ class _FiltroButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? Colors.lightBlueAccent.withValues(alpha: 0.2)
-              : Colors.white.withValues(alpha: 0.08),
+          color: selected ? Colors.lightBlueAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected
-                ? Colors.lightBlueAccent
-                : Colors.white.withValues(alpha: 0.15),
+            color: selected ? Colors.lightBlueAccent : Colors.white.withValues(alpha: 0.15),
           ),
         ),
         child: Text(

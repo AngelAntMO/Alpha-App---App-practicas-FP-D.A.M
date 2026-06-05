@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 
-//Pantalla de carga falsa, es solo estetica, solo se ve al iniciar la App sin una sesión ya abierta.
+// Splash visual mostrado durante el arranque de la aplicación, falsa pantalla de carga.
+// No depende de ninguna carga real de datos.
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
