@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:gestion_cliente/screens/inicio_superadmin.dart';
 import 'root_page.dart';
 
 class ProfileAdmin extends StatelessWidget {
