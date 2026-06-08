@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gestion_cliente/screens/admin_servicios.dart';
 import 'package:gestion_cliente/screens/estadisticas_admin.dart';
 import 'profile_admin.dart';
-import 'reservas_admin.dart';
+import 'package:gestion_cliente/screens/reservas_admin.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InicioAdmin extends StatefulWidget {
@@ -329,21 +329,10 @@ class _InicioAdminState extends State<InicioAdmin>
                         icon: Icons.people,
                         text: 'Servicios',
                         onTap: () {
-                          if (negocioID == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Cargando negocio...'),
-                              ),
-                            );
-
-                            return;
-                          }
-
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ReservasClasePage(negocioID: negocioID!),
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ReservasClasePage(),
                             ),
                           );
                         },
