@@ -1171,72 +1171,141 @@ class _TrabajadoresTabState extends State<_TrabajadoresTab> {
   }
 
   Future<void> _mostrarNuevoTrabajador() async {
-    final nombreCtrl = TextEditingController();
-    final apellidosCtrl = TextEditingController();
-    final telCtrl = TextEditingController();
-    final dirCtrl = TextEditingController();
+      final nombreCtrl = TextEditingController();
+      final apellidosCtrl = TextEditingController();
+      final telCtrl = TextEditingController();
+      final dirCtrl = TextEditingController();
+      final emailCtrl = TextEditingController();
+      final passwordCtrl = TextEditingController();
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _modalBg(
-        EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            _modalHandle(),
-            const SizedBox(height: 16),
-            const Row(children: [
-              Icon(Icons.engineering,
-                  color: Color(0xFF64B5F6), size: 22),
-              SizedBox(width: 10),
-              Text('Nuevo trabajador',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
-            ]),
-            const SizedBox(height: 20),
-            _fieldModal('Nombre', nombreCtrl, Icons.person,
-                const Color(0xFF64B5F6)),
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _modalBg(
+          EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              _modalHandle(),
+              const SizedBox(height: 16),
+              const Row(children: [
+                Icon(Icons.engineering,
+                    color: Color(0xFF64B5F6), size: 22),
+                SizedBox(width: 10),
+                Text('Nuevo trabajador',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 20),
+              _fieldModal('Nombre', nombreCtrl, Icons.person,
+                  const Color(0xFF64B5F6)),
+              const SizedBox(height: 12),
+              _fieldModal('Apellidos', apellidosCtrl,
+                  Icons.person_outline,
+                  const Color(0xFF64B5F6)),
+              const SizedBox(height: 12),
+              const SizedBox(height: 12),
+              _fieldModal(
+              'Correo electrónico',
+              emailCtrl,
+              Icons.email,
+            const Color(0xFF64B5F6),
+            ),
             const SizedBox(height: 12),
-            _fieldModal('Apellidos', apellidosCtrl,
-                Icons.person_outline,
-                const Color(0xFF64B5F6)),
-            const SizedBox(height: 12),
-            _fieldModal('Teléfono', telCtrl, Icons.phone,
-                const Color(0xFF64B5F6)),
-            const SizedBox(height: 12),
-            _fieldModal('Dirección', dirCtrl,
-                Icons.location_on,
-                const Color(0xFF64B5F6)),
-            const SizedBox(height: 20),
-            _botonesModal(
-              const Color(0xFF64B5F6),
-              onCancelar: () => Navigator.pop(ctx),
+            TextFormField(
+            controller: passwordCtrl,
+            obscureText: true,
+            style: const TextStyle(color: Colors.white),
+            decoration: _inputDeco(
+            Icons.lock,
+          const Color(0xFF64B5F6),
+        ),
+      ),
+              _fieldModal('Teléfono', telCtrl, Icons.phone,
+                  const Color(0xFF64B5F6)),
+              const SizedBox(height: 12),
+              _fieldModal('Dirección', dirCtrl,
+                  Icons.location_on,
+                  const Color(0xFF64B5F6)),
+              const SizedBox(height: 20),
+              _botonesModal(
+                const Color(0xFF64B5F6),
+                onCancelar: () => Navigator.pop(ctx),
               onConfirmar: () async {
-                if (nombreCtrl.text.trim().isEmpty) return;
-                await _FS.crearWorker({
-                  'nombre': nombreCtrl.text.trim(),
-                  'apellidos': apellidosCtrl.text.trim(),
-                  'telefono': telCtrl.text.trim(),
-                  'direccion': dirCtrl.text.trim(),
-                  'avatar': 'assets/images/acaperfil.png',
-                  'rol': 'worker',
-                  'activo': true,
-                  'email': '',
-                  'negocios': [_negocioSel],
-                  'fecha_registro':
-                      FieldValue.serverTimestamp(),
-                  'fechaNacimiento': null,
-                });
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              labelConfirmar: 'Añadir trabajador',
+  if (nombreCtrl.text.trim().isEmpty ||
+      emailCtrl.text.trim().isEmpty ||
+      passwordCtrl.text.trim().length < 6) {
+    return;
+  }
+
+ try {
+  // Crear usuario en una app secundaria para no perder
+  // la sesión del superadmin
+
+  FirebaseApp? secondary;
+
+  try {
+    secondary = await Firebase.initializeApp(
+      name: 'AdminCreation',
+      options: Firebase.app().options,
+    );
+  } catch (_) {
+    secondary = Firebase.app('AdminCreation');
+  }
+  final auth2 = FirebaseAuth.instanceFor(app: secondary);
+  final credential =
+      await auth2.createUserWithEmailAndPassword(
+    email: emailCtrl.text.trim(),
+    password: passwordCtrl.text.trim(),
+  );
+  final uid = credential.user!.uid;
+
+  await auth2.signOut();
+
+  try {
+    await secondary.delete();
+  } catch (_) {}
+
+  await FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .set({
+    'nombre': nombreCtrl.text.trim(),
+    'apellidos': apellidosCtrl.text.trim(),
+    'telefono': telCtrl.text.trim(),
+    'direccion': dirCtrl.text.trim(),
+    'avatar': 'assets/images/acaperfil.png',
+    'rol': 'worker',
+    'activo': true,
+    'email': emailCtrl.text.trim(),
+    'negocios': [_negocioSel],
+    'fecha_registro': FieldValue.serverTimestamp(),
+    'fechaNacimiento': null,
+  });
+if (ctx.mounted) {
+    Navigator.pop(ctx);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Trabajador creado correctamente'),
+      ),
+    );
+  }
+} on FirebaseAuthException catch (e) {
+    String mensaje = e.message ?? 'Error desconocido';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje)),
+    );
+  }
+},
+                labelConfirmar: 'Añadir trabajador',
             ),
           ]),
         ),
@@ -1475,22 +1544,13 @@ class _WorkerCardState extends State<_WorkerCard> {
   }
 
   void _guardar() async {
-    widget.worker.nombre = _nombreCtrl.text.trim();
-    widget.worker.apellidos = _apellidosCtrl.text.trim();
-    widget.worker.telefono = _telCtrl.text.trim();
-    widget.worker.direccion = _dirCtrl.text.trim();
-    widget.worker.rol = _rolSel;
-    await _FS.actualizarWorker(
-        widget.worker.id, widget.worker.toMap());
-    setState(() => _expandido = false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Trabajador actualizado'),
-          backgroundColor: _colorNegocio(widget.negocioSel),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10))));
-    }
+    await _FS.actualizarWorker(widget.worker.id, {
+      'nombre': _nombreCtrl.text.trim(),
+      'apellidos': _apellidosCtrl.text.trim(),
+      'telefono': _telCtrl.text.trim(),
+      'direccion': _dirCtrl.text.trim(),
+      'rol': _rolSel,
+    });
   }
 
   @override
