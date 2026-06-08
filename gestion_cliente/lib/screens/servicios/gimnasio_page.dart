@@ -78,17 +78,20 @@ class _GimnasioPageState extends State<GimnasioPage> {
 
   // Días con reservas para pintar puntos
   final Map<DateTime, String> _estadoDias = {};
+  List<DateTime> _diasBloqueados = [];
 
   // ============================================================
   // HORARIOS FIJOS
   // ============================================================
 
-  final List<String> horariosTotales = [  '08:00',
+  final List<String> horariosTotales = [
+    '08:00',
     '10:00',
     '12:00',
     '16:00',
     '18:00',
-    '20:00',];
+    '20:00',
+  ];
 
   // ============================================================
   // REFERENCIA NEGOCIO
@@ -109,6 +112,7 @@ class _GimnasioPageState extends State<GimnasioPage> {
 
     _cargarClases();
     _cargarEstadoDias();
+    _cargarDiasBloqueados();
     _actualizarReservasPasadas();
   }
 
@@ -204,6 +208,45 @@ class _GimnasioPageState extends State<GimnasioPage> {
       }
     } catch (e) {
       debugPrint('Error estado días: $e');
+    }
+  }
+
+  // ============================================================
+  // CARGAR DÍAS BLOQUEADOS (SIN DISPONIBILIDAD)
+
+  Future<void> _cargarDiasBloqueados() async {
+    if (_claseSeleccionada.isEmpty) {
+      setState(() {
+        _diasBloqueados = [];
+      });
+      return;
+    }
+
+    try {
+      final doc = await _db
+          .collection(_kColeccionClases)
+          .doc(_claseSeleccionada)
+          .get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+
+      final fechas = List<Timestamp>.from(data['fechasBloqueadas'] ?? []);
+
+      final bloqueados = fechas.map((ts) {
+        final d = ts.toDate();
+
+        return DateTime(d.year, d.month, d.day);
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _diasBloqueados = bloqueados;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando bloqueos: $e');
     }
   }
 
@@ -398,137 +441,128 @@ class _GimnasioPageState extends State<GimnasioPage> {
 
       final reservasRef = _db.collection(_kColeccionReservas);
 
-        //
-        // VALIDAR RESERVAS ACTIVAS USUARIO
-        //
+      //
+      // VALIDAR RESERVAS ACTIVAS USUARIO
+      //
 
-        final userReservas = await reservasRef
-            .where('userId', isEqualTo: widget.userId)
-            .where('negocioRef', isEqualTo: negocioRef)
-            .where('estado', isEqualTo: _kEstadoActiva)
-            .get();
+      final userReservas = await reservasRef
+          .where('userId', isEqualTo: widget.userId)
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
 
-        if (userReservas.docs.length >= _kMaxReservasgim) {
+      if (userReservas.docs.length >= _kMaxReservasgim) {
+        _mostrarMensaje('Ya tienes 5 reservas activas en Gimnasio');
 
-          _mostrarMensaje(
-            'Ya tienes 5 reservas activas en Gimnasio',
-          );
-
-          if (mounted) {
-            setState(() => _loading = false);
-          }
-
-          return;
+        if (mounted) {
+          setState(() => _loading = false);
         }
 
-        //
-        // RESERVAS DEL DÍA
-        //
+        return;
+      }
 
-        final reservasDia = await reservasRef
-            .where('negocioRef', isEqualTo: negocioRef)
-            .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
-            .where('estado', isEqualTo: _kEstadoActiva)
-            .get();
+      //
+      // RESERVAS DEL DÍA
+      //
 
-        //
-        // YA TIENE ESA HORA
-        //
+      final reservasDia = await reservasRef
+          .where('negocioRef', isEqualTo: negocioRef)
+          .where('fecha', isEqualTo: Timestamp.fromDate(fechaBase))
+          .where('estado', isEqualTo: _kEstadoActiva)
+          .get();
 
-        final yaTieneHora = reservasDia.docs.any((doc) {
-          return doc['userId'] == widget.userId &&
-              doc['hora'] == _horaSeleccionada;
-        });
+      //
+      // YA TIENE ESA HORA
+      //
 
-        if (yaTieneHora) {
+      final yaTieneHora = reservasDia.docs.any((doc) {
+        return doc['userId'] == widget.userId &&
+            doc['hora'] == _horaSeleccionada;
+      });
 
-          _mostrarMensaje(
-            'Ya tienes una reserva a esa hora',
-          );
+      if (yaTieneHora) {
+        _mostrarMensaje('Ya tienes una reserva a esa hora');
 
-          if (mounted) {
-            setState(() => _loading = false);
-          }
-
-          return;
+        if (mounted) {
+          setState(() => _loading = false);
         }
 
-        //
-        // CLASE COMPLETA
-        //
+        return;
+      }
 
-        final reservasClaseHora = reservasDia.docs.where((doc) {
-          return doc['claseNombre'] == _claseSeleccionada &&
-              doc['hora'] == _horaSeleccionada;
-        }).toList();
+      //
+      // CLASE COMPLETA
+      //
 
-        if (reservasClaseHora.length >= _kMaxPorClaseHora) {
+      final reservasClaseHora = reservasDia.docs.where((doc) {
+        return doc['claseNombre'] == _claseSeleccionada &&
+            doc['hora'] == _horaSeleccionada;
+      }).toList();
 
-          _mostrarMensaje(
-            'La clase está completa',
-          );
+      if (reservasClaseHora.length >= _kMaxPorClaseHora) {
+        _mostrarMensaje('La clase está completa');
 
-          if (mounted) {
-            setState(() => _loading = false);
-          }
-
-          return;
+        if (mounted) {
+          setState(() => _loading = false);
         }
 
-        //
-        // CREAR RESERVA
-        //
+        return;
+      }
 
-        final nuevaReserva = reservasRef.doc();
+      //
+      // CREAR RESERVA
+      //
 
-        await nuevaReserva.set({
-          // ====================================================
-          // USUARIO
-          // ====================================================
-          'userId': widget.userId,
+      final nuevaReserva = reservasRef.doc();
 
-          'cliente': user?.displayName?.isNotEmpty == true
-              ? user!.displayName
-              : user?.email ?? 'Usuario desconocido',
+      await nuevaReserva.set({
+        // ====================================================
+        // USUARIO
+        // ====================================================
+        'userId': widget.userId,
 
-          // ====================================================
-          // NEGOCIO
-          // ====================================================
-          'negocioNombre': widget.negocio,
+        'cliente': user?.displayName?.isNotEmpty == true
+            ? user!.displayName
+            : user?.email ?? 'Usuario desconocido',
 
-          'negocioRef': negocioRef,
+        // ====================================================
+        // NEGOCIO
+        // ====================================================
+        'negocioNombre': widget.negocio,
 
-          // ====================================================
-          // CLASE
-          // ====================================================
-          'claseNombre': _claseSeleccionada,
+        'negocioRef': negocioRef,
 
-          'claseRef': _db.collection(_kColeccionClases).doc(_claseSeleccionada),
+        // ====================================================
+        // CLASE
+        // ====================================================
+        'claseNombre': _claseSeleccionada,
 
-          // ====================================================
-          // EMPLEADO
-          // ====================================================
-          'employeeID': employeeID,
+        'claseRef': _db.collection(_kColeccionClases).doc(_claseSeleccionada),
 
-          // ====================================================
-          // FECHAS
-          // ====================================================
-          'fecha': Timestamp.fromDate(fechaBase),
+        // ====================================================
+        // EMPLEADO
+        // ====================================================
+        'employeeID': employeeID,
 
-          'fechaHora': Timestamp.fromDate(fechaHora),
+        // ====================================================
+        // FECHAS
+        // ====================================================
+        'fecha': Timestamp.fromDate(fechaBase),
 
-          'hora': _horaSeleccionada,
+        'fechaHora': Timestamp.fromDate(fechaHora),
 
-          // ====================================================
-          // ESTADO
-          // ====================================================
-          'estado': _kEstadoActiva,
+        'hora': _horaSeleccionada,
 
-          // ====================================================
-          // TIMESTAMP CREACIÓN
-          // ====================================================
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+        // ====================================================
+        // ESTADO
+        // ====================================================
+        'estado': _kEstadoActiva,
+
+        // ====================================================
+        // TIMESTAMP CREACIÓN
+        // ====================================================
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
       // ========================================================
       // MENSAJE OK
@@ -628,12 +662,12 @@ class _GimnasioPageState extends State<GimnasioPage> {
 
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [ 
-      
-      Color(0xFFFFFFFF), // blanco (suaviza transición)
-      Color(0xFFFFF176), // amarillo suave
-      Color(0xFFFFC107), // amarillo medio
-      Color(0xFFFFA000), ],
+            colors: [
+              Color(0xFFFFFFFF),
+              Color(0xFFFFE082), // más fuerte que FFF176
+              Color(0xFFFFC107),
+              Color(0xFFFF8F00),
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -689,7 +723,7 @@ class _GimnasioPageState extends State<GimnasioPage> {
                         lastDay: DateTime.now().add(const Duration(days: 365)),
                         calendarStyle: CalendarStyle(
                           todayDecoration: BoxDecoration(
-                            color:  Color(0xFFFBC02D),
+                            color: Color(0xFFFBC02D),
                             shape: BoxShape.circle,
                           ),
 
@@ -711,6 +745,14 @@ class _GimnasioPageState extends State<GimnasioPage> {
                         ),
 
                         focusedDay: _focusedDay,
+
+                        enabledDayPredicate: (day) {
+                          final bloqueado = _diasBloqueados.any(
+                            (d) => isSameDay(d, day),
+                          );
+
+                          return day.weekday != DateTime.sunday && !bloqueado;
+                        },
 
                         selectedDayPredicate: (day) =>
                             isSameDay(_selectedDay, day),
@@ -736,6 +778,34 @@ class _GimnasioPageState extends State<GimnasioPage> {
                         ),
 
                         calendarBuilders: CalendarBuilders(
+                          defaultBuilder: (context, day, focusedDay) {
+                            final bloqueado = _diasBloqueados.any(
+                              (d) => isSameDay(d, day),
+                            );
+
+                            if (!bloqueado) {
+                              return null;
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.25),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.red,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 16,
+                                ),
+                              ),
+                            );
+                          },
                           markerBuilder: (context, date, events) {
                             final estado = _estadoDias.entries
                                 .where((e) => isSameDay(e.key, date))
@@ -808,12 +878,16 @@ class _GimnasioPageState extends State<GimnasioPage> {
                           );
                         }).toList(),
 
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() {
                             _claseSeleccionada = value!;
+                            _selectedDay = null;
+                            _horaSeleccionada = '';
                           });
 
-                          _actualizarHorasDisponibles();
+                          await _cargarDiasBloqueados();
+
+                          await _actualizarHorasDisponibles();
                         },
                       ),
                     ),

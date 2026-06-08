@@ -82,6 +82,7 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
 
   // Días con reservas para pintar puntos
   final Map<DateTime, String> _estadoDias = {};
+    List<DateTime> _diasBloqueados = [];
 
   // ============================================================
   // HORARIOS FIJOS
@@ -117,6 +118,7 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
 
     _cargarClases();
     _cargarEstadoDias();
+    _cargarDiasBloqueados();
     _actualizarReservasPasadas();
   }
 
@@ -212,6 +214,56 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
       }
     } catch (e) {
       debugPrint('Error estado días: $e');
+    }
+  }
+
+  // ============================================================
+  // CARGAR DÍAS BLOQUEADOS (SIN DISPONIBILIDAD)  
+
+  Future<void> _cargarDiasBloqueados() async {
+
+    if (_claseSeleccionada.isEmpty) {
+      setState(() {
+        _diasBloqueados = [];
+      });
+      return;
+    }
+
+    try {
+
+      final doc = await _db
+          .collection(_kColeccionespecialistas)
+          .doc(_claseSeleccionada)
+          .get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+
+      final fechas = List<Timestamp>.from(
+        data['fechasBloqueadas'] ?? [],
+      );
+
+      final bloqueados = fechas.map((ts) {
+
+        final d = ts.toDate();
+
+        return DateTime(
+          d.year,
+          d.month,
+          d.day,
+        );
+
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _diasBloqueados = bloqueados;
+        });
+      }
+
+    } catch (e) {
+      debugPrint('Error cargando bloqueos: $e');
     }
   }
 
@@ -718,6 +770,14 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
 
                         focusedDay: _focusedDay,
 
+                        enabledDayPredicate: (day) {
+                          final bloqueado = _diasBloqueados.any(
+                            (d) => isSameDay(d, day),
+                          );
+
+                          return day.weekday != DateTime.sunday && !bloqueado;
+                        },
+
                         selectedDayPredicate: (day) =>
                             isSameDay(_selectedDay, day),
 
@@ -742,6 +802,34 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
                         ),
 
                         calendarBuilders: CalendarBuilders(
+                          defaultBuilder: (context, day, focusedDay) {
+                            final bloqueado = _diasBloqueados.any(
+                              (d) => isSameDay(d, day),
+                            );
+
+                            if (!bloqueado) {
+                              return null;
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.25),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.red,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 16,
+                                ),
+                              ),
+                            );
+                          },
                           markerBuilder: (context, date, events) {
                             final estado = _estadoDias.entries
                                 .where((e) => isSameDay(e.key, date))
@@ -814,12 +902,16 @@ class _FisioterapiaPageState extends State<FisioterapiaPage> {
                           );
                         }).toList(),
 
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() {
                             _claseSeleccionada = value!;
+                            _selectedDay = null;
+                            _horaSeleccionada = '';
                           });
 
-                          _actualizarHorasDisponibles();
+                          await _cargarDiasBloqueados();
+
+                          await _actualizarHorasDisponibles();
                         },
                       ),
                     ),
