@@ -187,14 +187,6 @@ const List<String> _rolesDisponibles = [
   'superadmin',
 ];
 
-// Estados reales en Firestore — añade aquí cualquier variante que uses
-const List<String> _estadosReales = [
-  'activa',
-  'cancelada',
-  'completada',
-  'finalizada',
-];
-
 Color _colorRol(String rol) {
   switch (rol) {
     case 'superadmin':
@@ -287,8 +279,6 @@ class _FS {
       .collection('users')
       .where('rol', whereIn: ['worker', 'admin', 'superadmin'])
       .snapshots();
-  static Future<void> crearWorker(Map<String, dynamic> data) =>
-      _db.collection('users').add(data);
   static Future<void> actualizarWorker(String id, Map<String, dynamic> data) =>
       _db.collection('users').doc(id).update(data);
   static Future<void> eliminarWorker(String id) =>
@@ -301,8 +291,6 @@ class _FS {
       _db.collection('users').doc(u.id).update(u.toMap());
   static Future<void> eliminarUser(String id) =>
       _db.collection('users').doc(id).delete();
-  static Future<void> actualizarRolUser(String uid, String nuevoRol) =>
-      _db.collection('users').doc(uid).update({'rol': nuevoRol});
 
   // RESERVAS — sin orderBy para evitar necesitar índice compuesto
   static Stream<QuerySnapshot> reservasStream() =>
@@ -1121,7 +1109,6 @@ class _ClaseCardState extends State<_ClaseCard> {
   bool _expandido = false;
   late TextEditingController _nombreCtrl;
   String? _empleadoSel;
-  late Stream<QuerySnapshot> _workersStream;
 
   @override
   void initState() {
@@ -1130,7 +1117,6 @@ class _ClaseCardState extends State<_ClaseCard> {
     _empleadoSel = widget.clase.employeeID.isNotEmpty
         ? widget.clase.employeeID
         : null;
-    _workersStream = _FS.workersStream();
   }
 
   @override
