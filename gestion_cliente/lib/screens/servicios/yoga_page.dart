@@ -977,7 +977,7 @@ class _YogaPageState extends State<YogaPage> {
                               colors: [
                                 Color(0xFF1E293B),
                                 Color.fromARGB(255, 11, 51, 54),
-                                Color(0xFF64B5F6)
+                                Color(0xFF64B5F6),
                               ],
                             ),
 
