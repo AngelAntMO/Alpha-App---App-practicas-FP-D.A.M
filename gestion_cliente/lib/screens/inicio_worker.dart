@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 import 'package:gestion_cliente/screens/agendaworker_screen.dart';
 import 'profile_worker.dart';
 import 'package:gestion_cliente/screens/worker_check_screen.dart';
@@ -9,59 +9,55 @@ import 'package:gestion_cliente/screens/worker_check_screen.dart';
 class InicioWorker extends StatefulWidget {
   const InicioWorker({super.key});
 
-
   @override
   State<InicioWorker> createState() => _InicioWorkerState();
 }
-
 
 class _InicioWorkerState extends State<InicioWorker>
     with SingleTickerProviderStateMixin {
 
   bool _hasNewReservas = false;
   int _previousCount = 0;
-
+  StreamSubscription? _reservasSubscription;
 
   late AnimationController _controller;
   late Animation<double> _scaleAnim;
 
   @override
-void initState() {
-  super.initState();
+  void initState() {
+    super.initState();
 
-  _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 2),
-  )..repeat(reverse: true);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
 
-  _scaleAnim = Tween<double>(
-    begin: 1.0,
-    end: 1.10,
-  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 1.10,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-  _listenReservas();
-}
+    _listenReservas();
+  }
 
-void _listenReservas() {
-  FirebaseFirestore.instance
-      .collection('reservas')
-      .snapshots()
-      .listen((snapshot) {
+  void _listenReservas() {
+    _reservasSubscription = FirebaseFirestore.instance
+        .collection('reservas')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
 
-    int currentCount = snapshot.docs.length;
-
-    if (currentCount > _previousCount) {
-      setState(() {
-        _hasNewReservas = true;
-      });
-    }
-
-    _previousCount = currentCount;
-  });
-}
+      int currentCount = snapshot.docs.length;
+      if (currentCount > _previousCount) {
+        setState(() => _hasNewReservas = true);
+      }
+      _previousCount = currentCount;
+    });
+  }
 
   @override
   void dispose() {
+    _reservasSubscription?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -78,7 +74,6 @@ void _listenReservas() {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-
         appBar: AppBar(
           elevation: 0,
           toolbarHeight: 80,
@@ -91,9 +86,7 @@ void _listenReservas() {
               fit: BoxFit.contain,
             ),
           ),
-
         ),
-
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Center(
@@ -103,6 +96,7 @@ void _listenReservas() {
                 children: [
                   const SizedBox(height: 30),
 
+                  // ── Logo circular ──
                   Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -126,42 +120,35 @@ void _listenReservas() {
                           width: 320,
                           height: 320,
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF0F172A,
-                            ).withValues(alpha: 0.85),
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.85),
                             border: Border.all(
                               color: Colors.blueAccent.withValues(alpha: 0.5),
                             ),
                             shape: BoxShape.circle,
                           ),
-
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               AnimatedBuilder(
                                 animation: _scaleAnim,
-                                builder: (context, child) {
-                                  return Transform.scale(
-                                    scale: _scaleAnim.value,
-                                    child: child,
-                                  );
-                                },
+                                builder: (context, child) => Transform.scale(
+                                  scale: _scaleAnim.value,
+                                  child: child,
+                                ),
                                 child: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(
-                                          0xFF1E88E5,
-                                        ).withValues(alpha: 0.35),
+                                        color: const Color(0xFF1E88E5)
+                                            .withValues(alpha: 0.35),
                                         blurRadius: 18,
                                         spreadRadius: 1,
                                       ),
                                       BoxShadow(
-                                        color: const Color(
-                                          0xFF1565C0,
-                                        ).withValues(alpha: 0.25),
+                                        color: const Color(0xFF1565C0)
+                                            .withValues(alpha: 0.25),
                                         blurRadius: 34,
                                         spreadRadius: 2,
                                       ),
@@ -174,9 +161,7 @@ void _listenReservas() {
                                   ),
                                 ),
                               ),
-
                               const SizedBox(height: 10),
-
                               TweenAnimationBuilder<double>(
                                 tween: Tween(begin: 0, end: 1),
                                 duration: const Duration(seconds: 3),
@@ -196,7 +181,7 @@ void _listenReservas() {
                                       ).createShader(bounds);
                                     },
                                     child: const Text(
-                                      "Zona de empleados",
+                                      'Zona de empleados',
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
@@ -207,17 +192,13 @@ void _listenReservas() {
                                   );
                                 },
                               ),
-
                               const SizedBox(height: 12),
-
                               AnimatedBuilder(
                                 animation: _scaleAnim,
-                                builder: (context, child) {
-                                  return Transform.scale(
-                                    scale: 1.0 + (_scaleAnim.value - 1.0) * 0.5,
-                                    child: child,
-                                  );
-                                },
+                                builder: (context, child) => Transform.scale(
+                                  scale: 1.0 + (_scaleAnim.value - 1.0) * 0.5,
+                                  child: child,
+                                ),
                                 child: const Icon(
                                   Icons.work_outline,
                                   color: Colors.white,
@@ -233,66 +214,67 @@ void _listenReservas() {
 
                   const SizedBox(height: 60),
 
+                  // ── Botones ──
                   HoverButton(
                     icon: Icons.how_to_reg,
-                    text: "Fichar entrada/salida",
+                    text: 'Fichar entrada/salida',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const WorkerCheckScreen(),
+                          builder: (_) => const WorkerCheckScreen(),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 20),
 
-                 HoverButton(
-  text: "Agenda",
-  onTap: () {
-    setState(() {
-      _hasNewReservas = false;
-    });
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const AgendaWorkerPage(),
-      ),
-    );
-  },
-  builder: (context, isHovered) {
-    return Stack(
-      children: [
-        Icon(
-          _hasNewReservas
-              ? Icons.notifications
-              : Icons.calendar_today,
-          color: isHovered ? Colors.blueAccent : Colors.white,
-          size: 28,
-        ),
-        if (_hasNewReservas)
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-      ],
-    );
-  }, icon: null,
-),
+                  HoverButton(
+                    icon: null,
+                    text: 'Agenda',
+                    onTap: () {
+                      setState(() => _hasNewReservas = false);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AgendaWorkerPage(),
+                        ),
+                      );
+                    },
+                    builder: (context, isHovered) {
+                      return Stack(
+                        children: [
+                          Icon(
+                            _hasNewReservas
+                                ? Icons.notifications
+                                : Icons.calendar_today,
+                            color: isHovered
+                                ? Colors.lightBlueAccent
+                                : Colors.blueAccent,
+                            size: 28,
+                          ),
+                          if (_hasNewReservas)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
 
                   HoverButton(
                     icon: Icons.person,
-                    text: "Perfil",
+                    text: 'Perfil',
                     onTap: () {
                       Navigator.push(
                         context,
@@ -314,6 +296,9 @@ void _listenReservas() {
   }
 }
 
+// ───────
+//  HOVER
+// ───────
 class HoverButton extends StatefulWidget {
   final IconData? icon;
   final String text;
@@ -338,14 +323,15 @@ class _HoverButtonState extends State<HoverButton> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    double maxWidth = screenWidth > 600 ? 420 : double.infinity;
+    final double maxWidth = screenWidth > 600 ? 500 : double.infinity;
 
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: MouseRegion(
+          cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) => setState(() => _isHovering = false),
+          onExit:  (_) => setState(() => _isHovering = false),
           child: Transform.translate(
             offset: Offset(0, _isHovering ? -6 : 0),
             child: AnimatedContainer(
@@ -354,8 +340,8 @@ class _HoverButtonState extends State<HoverButton> {
               child: GestureDetector(
                 onTap: widget.onTap,
                 child: Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  height: 72,                              // ← 60 → 72
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(18),
@@ -375,19 +361,26 @@ class _HoverButtonState extends State<HoverButton> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                     AnimatedScale(
-                        scale: _isHovering ? 1.15 : 1.0,
+                      AnimatedScale(
+                        scale:    _isHovering ? 1.15 : 1.0,
                         duration: const Duration(milliseconds: 200),
                         child: widget.builder != null
-                        ? widget.builder!(context, _isHovering)
-                        : Icon(widget.icon, color: Colors.blueAccent),
-                        ),  
-                      const SizedBox(width: 12),
+                            ? widget.builder!(context, _isHovering)
+                            : Icon(
+                                widget.icon,
+                                color: _isHovering
+                                    ? Colors.lightBlueAccent
+                                    : Colors.blueAccent,
+                                size: 26,
+                              ),
+                      ),
+                      const SizedBox(width: 14),
                       Text(
                         widget.text,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
+                          color:      Colors.white,
+                          fontSize:   15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],

@@ -82,6 +82,7 @@ class _YogaPageState extends State<YogaPage> {
 
   // Días con reservas para pintar puntos
   final Map<DateTime, String> _estadoDias = {};
+    List<DateTime> _diasBloqueados = [];
 
   // ============================================================
   // HORARIOS FIJOS
@@ -108,6 +109,7 @@ class _YogaPageState extends State<YogaPage> {
 
     _cargarClases();
     _cargarEstadoDias();
+    _cargarDiasBloqueados();
     _actualizarReservasPasadas();
   }
 
@@ -203,6 +205,56 @@ class _YogaPageState extends State<YogaPage> {
       }
     } catch (e) {
       debugPrint('Error estado días: $e');
+    }
+  }
+
+  // ============================================================
+  // CARGAR DÍAS BLOQUEADOS (SIN DISPONIBILIDAD)  
+
+  Future<void> _cargarDiasBloqueados() async {
+
+    if (_claseSeleccionada.isEmpty) {
+      setState(() {
+        _diasBloqueados = [];
+      });
+      return;
+    }
+
+    try {
+
+      final doc = await _db
+          .collection(_kColeccionClases)
+          .doc(_claseSeleccionada)
+          .get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+
+      final fechas = List<Timestamp>.from(
+        data['fechasBloqueadas'] ?? [],
+      );
+
+      final bloqueados = fechas.map((ts) {
+
+        final d = ts.toDate();
+
+        return DateTime(
+          d.year,
+          d.month,
+          d.day,
+        );
+
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _diasBloqueados = bloqueados;
+        });
+      }
+
+    } catch (e) {
+      debugPrint('Error cargando bloqueos: $e');
     }
   }
 
@@ -707,7 +759,11 @@ class _YogaPageState extends State<YogaPage> {
                         focusedDay: _focusedDay,
 
                         enabledDayPredicate: (day) {
-                          return day.weekday != DateTime.sunday;
+                          final bloqueado = _diasBloqueados.any(
+                            (d) => isSameDay(d, day),
+                          );
+
+                          return day.weekday != DateTime.sunday && !bloqueado;
                         },
 
                         selectedDayPredicate: (day) =>
@@ -734,6 +790,34 @@ class _YogaPageState extends State<YogaPage> {
                         ),
 
                         calendarBuilders: CalendarBuilders(
+                          defaultBuilder: (context, day, focusedDay) {
+                            final bloqueado = _diasBloqueados.any(
+                              (d) => isSameDay(d, day),
+                            );
+
+                            if (!bloqueado) {
+                              return null;
+                            }
+
+                            return Container(
+                              margin: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.25),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.red,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                  size: 16,
+                                ),
+                              ),
+                            );
+                          },
                           markerBuilder: (context, date, events) {
                             final estado = _estadoDias.entries
                                 .where((e) => isSameDay(e.key, date))
@@ -744,7 +828,7 @@ class _YogaPageState extends State<YogaPage> {
                               return null;
                             }
 
-                            Color color = const Color.fromARGB(255, 0, 255, 157);
+                            Color color = Colors.orange;
 
                             if (estado == 'verde') {
                               color = Colors.green;
@@ -806,12 +890,16 @@ class _YogaPageState extends State<YogaPage> {
                           );
                         }).toList(),
 
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() {
                             _claseSeleccionada = value!;
+                            _selectedDay = null;
+                            _horaSeleccionada = '';
                           });
 
-                          _actualizarHorasDisponibles();
+                          await _cargarDiasBloqueados();
+
+                          await _actualizarHorasDisponibles();
                         },
                       ),
                     ),
@@ -889,7 +977,7 @@ class _YogaPageState extends State<YogaPage> {
                               colors: [
                                 Color(0xFF1E293B),
                                 Color.fromARGB(255, 11, 51, 54),
-                                Color.fromARGB(255, 12, 190, 176),
+                                Color(0xFF64B5F6)
                               ],
                             ),
 

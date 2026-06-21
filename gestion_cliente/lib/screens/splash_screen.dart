@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:gestion_cliente/screens/root_page.dart';
+
+// Splash visual mostrado durante el arranque de la aplicación, falsa pantalla de carga.
+// No depende de ninguna carga real de datos.
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -54,17 +56,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    _cargarApp();
-  }
-
-  Future<void> _cargarApp() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const RootPage()),
-    );
+    
   }
 
   @override

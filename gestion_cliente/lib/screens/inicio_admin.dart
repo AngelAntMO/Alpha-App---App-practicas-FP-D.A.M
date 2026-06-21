@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:gestion_cliente/screens/admin_servicios.dart';
+import 'package:gestion_cliente/screens/estadisticas_admin.dart';
+import 'profile_admin.dart';
+import 'package:gestion_cliente/screens/reservas_admin.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InicioAdmin extends StatefulWidget {
   const InicioAdmin({super.key});
@@ -10,6 +15,7 @@ class InicioAdmin extends StatefulWidget {
 
 class _InicioAdminState extends State<InicioAdmin>
     with TickerProviderStateMixin {
+  String? negocioID;
   late AnimationController _controller;
   late Animation<double> _animation;
   late Animation<double> _glowAnimation;
@@ -30,6 +36,8 @@ class _InicioAdminState extends State<InicioAdmin>
   @override
   void initState() {
     super.initState();
+
+    obtenerNegocioAdmin();
 
     _controller = AnimationController(
       vsync: this,
@@ -77,30 +85,31 @@ class _InicioAdminState extends State<InicioAdmin>
 
     _glowColorAnimation =
         ColorTween(
-          begin: const Color(0xFF2563EB), 
-          end: const Color(0xFF60A5FA), 
+          begin: const Color(0xFF2563EB),
+          end: const Color(0xFF60A5FA),
         ).animate(
           CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
         );
 
     _entryController.forward();
+
     _cardController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
 
-    _cardFadeAnimations = List.generate(3, (index) {
+    _cardFadeAnimations = List.generate(4, (index) {
       return CurvedAnimation(
         parent: _cardController,
         curve: Interval(
-          0.2 * index,
-          0.6 + (0.2 * index),
+          index * 0.15,
+          0.55 + (index * 0.15),
           curve: Curves.easeOut,
         ),
       );
     });
 
-    _cardSlideAnimations = List.generate(3, (index) {
+    _cardSlideAnimations = List.generate(4, (index) {
       return Tween<Offset>(
         begin: const Offset(0, 0.2),
         end: Offset.zero,
@@ -108,8 +117,8 @@ class _InicioAdminState extends State<InicioAdmin>
         CurvedAnimation(
           parent: _cardController,
           curve: Interval(
-            0.2 * index,
-            0.6 + (0.2 * index),
+            index * 0.15,
+            0.55 + (index * 0.15),
             curve: Curves.easeOut,
           ),
         ),
@@ -117,6 +126,7 @@ class _InicioAdminState extends State<InicioAdmin>
     });
 
     _cardController.forward();
+
     _titleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -132,10 +142,39 @@ class _InicioAdminState extends State<InicioAdmin>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _titleController, curve: Curves.easeOut));
 
-    // pequeño delay para que entre después del logo
     Future.delayed(const Duration(milliseconds: 600), () {
-      _titleController.forward();
+      if (mounted) _titleController.forward();
     });
+  }
+
+  // Para obtener el negocio del admin logeado.
+  Future<void> obtenerNegocioAdmin() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        debugPrint("Usuario no logueado");
+        return;
+      }
+
+      final uid = user.uid;
+
+      final query = await FirebaseFirestore.instance
+          .collection('negocios')
+          .where('encargadoID', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        setState(() {
+          negocioID = query.docs.first.id;
+        });
+      } else {
+        debugPrint("No hay negocio para este admin");
+      }
+    } catch (e) {
+      debugPrint("ERROR FIREBASE: $e");
+    }
   }
 
   // Esto es para liberar memoria y evitar la estupenda ventana roja de error de flutter.
@@ -146,6 +185,7 @@ class _InicioAdminState extends State<InicioAdmin>
     _waveController.dispose();
     _entryController.dispose();
     _titleController.dispose();
+    _cardController.dispose();
     super.dispose();
   }
 
@@ -161,24 +201,18 @@ class _InicioAdminState extends State<InicioAdmin>
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text("Panel Administrador"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              color: Colors.white,
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-              },
-            ),
-          ],
+          title: const Text(
+            'Panel de Administrador',
+            style: TextStyle(color: Colors.white),
+          ),
+         
         ),
-
-        body: Padding(
-          padding: const EdgeInsets.all(20),
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -186,136 +220,183 @@ class _InicioAdminState extends State<InicioAdmin>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Logo animado ──
                   Center(
                     child: SizedBox(
-                      height: 260,
+                      height: 240,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          
                           AnimatedBuilder(
                             animation: _waveAnimation,
-                            builder: (context, child) {
-                              return Container(
-                                width: 220 + (_waveAnimation.value * 80),
-                                height: 220 + (_waveAnimation.value * 80),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.lightBlueAccent.withValues(
-                                      alpha: 1 - _waveAnimation.value,
-                                    ),
-                                    width: 2,
+                            builder: (context, child) => Container(
+                              width: 220 + (_waveAnimation.value * 80),
+                              height: 220 + (_waveAnimation.value * 80),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.lightBlueAccent.withValues(
+                                    alpha: 1 - _waveAnimation.value,
                                   ),
+                                  width: 2,
                                 ),
-                              );
-                            },
+                              ),
+                            ),
                           ),
-
-                          
                           AnimatedBuilder(
                             animation: Listenable.merge([
                               _animation,
                               _glowAnimation,
                             ]),
-                            builder: (context, child) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          (_glowColorAnimation.value ??
-                                                  Colors.lightBlueAccent)
-                                              .withValues(alpha: 0.5),
-                                      blurRadius: _glowAnimation.value,
-                                      spreadRadius: _glowAnimation.value / 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Transform.scale(
-                                  scale: _animation.value,
-                                  child: child,
-                                ),
-                              );
-                            },
+                            builder: (context, child) => Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                        (_glowColorAnimation.value ??
+                                                Colors.lightBlueAccent)
+                                            .withValues(alpha: 0.5),
+                                    blurRadius: _glowAnimation.value,
+                                    spreadRadius: _glowAnimation.value / 2,
+                                  ),
+                                ],
+                              ),
+                              child: Transform.scale(
+                                scale: _animation.value,
+                                child: child,
+                              ),
+                            ),
                             child: Image.asset(
                               'assets/images/Icono_AlphaApp.png',
-                              width: 180,
-                              height: 180,
+                              width: 170,
+                              height: 170,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+
+                  const SizedBox(height: 24),
+
+                  // ── Título ──
                   FadeTransition(
                     opacity: _titleFade,
                     child: SlideTransition(
                       position: _titleSlide,
-                      child: const Text(
-                        "Bienvenido Admin",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                      child: const Center(
+                        child: Column(
+                          children: [
+                          
+                            SizedBox(height: 10),
+                            Text(
+                              'Bienvenido, Admin',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                                height: 1.2,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Panel de administración',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 35),
 
-                  
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: FadeTransition(
-                            opacity: _cardFadeAnimations[0],
-                            child: SlideTransition(
-                              position: _cardSlideAnimations[0],
-                              child: _AdminCard(
-                                icon: Icons.people,
-                                title: "Usuarios",
-                                onTap: () {},
-                              ),
+                  const SizedBox(height: 28),
+
+                  // ── Botones ──
+                  FadeTransition(
+                    opacity: _cardFadeAnimations[0],
+                    child: SlideTransition(
+                      position: _cardSlideAnimations[0],
+                      child: _AdminHoverBtn(
+                        icon: Icons.people,
+                        text: 'Servicios',
+                        onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ReservasClasePage(),
                             ),
-                          ),
-                        ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                        const SizedBox(width: 20),
-
-                        Expanded(
-                          child: FadeTransition(
-                            opacity: _cardFadeAnimations[1],
-                            child: SlideTransition(
-                              position: _cardSlideAnimations[1],
-                              child: _AdminCard(
-                                icon: Icons.business,
-                                title: "Servicios",
-                                onTap: () {},
-                              ),
+                  FadeTransition(
+                    opacity: _cardFadeAnimations[1],
+                    child: SlideTransition(
+                      position: _cardSlideAnimations[1],
+                      child: _AdminHoverBtn(
+                        icon: Icons.business,
+                        text: 'Gestión',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const GestionNegocioAdmin(),
                             ),
-                          ),
-                        ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                        const SizedBox(width: 20),
-
-                        Expanded(
-                          child: FadeTransition(
-                            opacity: _cardFadeAnimations[2],
-                            child: SlideTransition(
-                              position: _cardSlideAnimations[2],
-                              child: _AdminCard(
-                                icon: Icons.settings,
-                                title: "Configuración",
-                                onTap: () {},
-                              ),
+                  FadeTransition(
+                    opacity: _cardFadeAnimations[2],
+                    child: SlideTransition(
+                      position: _cardSlideAnimations[2],
+                      child: _AdminHoverBtn(
+                        icon: Icons.bar_chart,
+                        text: 'Estadisticas',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EstadisticasAdmin(),
                             ),
-                          ),
-                        ),
-                      ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  FadeTransition(
+                    opacity: _cardFadeAnimations[3],
+                    child: SlideTransition(
+                      position: _cardSlideAnimations[3],
+                      child: _AdminHoverBtn(
+                        icon: Icons.person_outline,
+                        text: 'Perfil',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProfileAdmin(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -328,98 +409,92 @@ class _InicioAdminState extends State<InicioAdmin>
   }
 }
 
-class _AdminCard extends StatefulWidget {
+// ─────────────
+//  BOTÓN HOVER
+// ─────────────
+class _AdminHoverBtn extends StatefulWidget {
   final IconData icon;
-  final String title;
+  final String text;
   final VoidCallback onTap;
 
-  const _AdminCard({
+  const _AdminHoverBtn({
     required this.icon,
-    required this.title,
+    required this.text,
     required this.onTap,
   });
 
   @override
-  State<_AdminCard> createState() => _AdminCardState();
+  State<_AdminHoverBtn> createState() => _AdminHoverBtnState();
 }
 
-class _AdminCardState extends State<_AdminCard> {
-  bool isHovering = false;
+class _AdminHoverBtnState extends State<_AdminHoverBtn> {
+  bool _hovering = false;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double maxWidth = screenWidth > 600 ? 500 : double.infinity;
 
-      onEnter: (_) {
-        setState(() {
-          isHovering = true;
-        });
-      },
-
-      onExit: (_) {
-        setState(() {
-          isHovering = false;
-        });
-      },
-
-      child: AnimatedScale(
-        scale: isHovering ? 1.05 : 1.0,
-        duration: const Duration(milliseconds: 200),
-
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(25),
-
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-
-            decoration: BoxDecoration(
-              color: isHovering
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.08),
-
-              borderRadius: BorderRadius.circular(25),
-
-              border: Border.all(
-                color: isHovering
-                    ? Colors.white.withValues(alpha: 0.25)
-                    : Colors.white.withValues(alpha: 0.08),
-                width: 1.5,
-              ),
-
-              boxShadow: isHovering
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        blurRadius: 20,
-                        spreadRadius: 2,
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovering = true),
+          onExit: (_) => setState(() => _hovering = false),
+          child: Transform.translate(
+            offset: Offset(0, _hovering ? -6 : 0),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: GestureDetector(
+                onTap: widget.onTap,
+                child: Container(
+                  height: 72,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                    boxShadow: _hovering
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 15,
+                              offset: const Offset(0, 6),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedScale(
+                        scale: _hovering ? 1.15 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          widget.icon,
+                          color: _hovering
+                              ? Colors.lightBlueAccent
+                              : Colors.blueAccent,
+                          size: 26,
+                        ),
                       ),
-                    ]
-                  : [],
-            ),
-
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  widget.icon,
-                  size: isHovering ? 75 : 65,
-                  color: Colors.lightBlueAccent,
-                ),
-
-                const SizedBox(height: 20),
-
-                Text(
-                  widget.title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isHovering ? 20 : 18,
-                    fontWeight: FontWeight.bold,
+                      const SizedBox(width: 14),
+                      Text(
+                        widget.text,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

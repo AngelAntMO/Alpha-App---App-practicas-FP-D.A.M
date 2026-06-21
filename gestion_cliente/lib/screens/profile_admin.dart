@@ -2,32 +2,10 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'root_page.dart';
 
-import 'package:gestion_cliente/screens/root_page.dart';
-
-class WorkerProfilePage extends StatelessWidget {
-  const WorkerProfilePage({super.key});
-
-  Future<void> _markMessagesAsRead(String uid) async {
-    final messages = await FirebaseFirestore.instance
-        .collection('worker_messages')
-        .where('employeeId', isEqualTo: uid)
-        .where('read', isEqualTo: false)
-        .get();
-
-    for (final doc in messages.docs) {
-      await doc.reference.update({'read': true});
-    }
-  }
-
-  Stream<int> _unreadMessagesStream(String uid) {
-    return FirebaseFirestore.instance
-        .collection('worker_messages')
-        .where('employeeId', isEqualTo: uid)
-        .where('read', isEqualTo: false)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.length);
-  }
+class ProfileAdmin extends StatelessWidget {
+  const ProfileAdmin({super.key});
 
   final List<String> avatarOptions = const [
     "assets/images/moureperfil.png",
@@ -57,21 +35,23 @@ class WorkerProfilePage extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
+
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           centerTitle: true,
           title: const Text(
-            "Perfil trabajador",
+            "Perfil Administrador",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.pop(context);
             },
           ),
         ),
+
         body: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -80,48 +60,29 @@ class WorkerProfilePage extends StatelessWidget {
               child: Column(
                 children: [
                   _buildHeader(user),
+
                   const SizedBox(height: 30),
+
                   AnimatedMenuButton(
                     icon: Icons.person_outline,
                     title: "Editar perfil",
                     onTap: () {
                       if (user != null) {
-                        _showEditWorkerProfile(context, user.uid);
+                        _showEditAdminProfile(context, user.uid);
                       }
                     },
                   ),
-                  if (user != null)
-                    StreamBuilder<int>(
-                      stream: _unreadMessagesStream(user.uid),
-                      builder: (context, snapshot) {
-                        final unread = snapshot.data ?? 0;
 
-                        return AnimatedMenuButton(
-                          icon: Icons.mail_outline,
-                          title: "Mis mensajes",
-                          onTap: () {
-                            _markMessagesAsRead(user.uid);
-                            _showInternalMessages(context, user.uid);
-                          },
-                          trailing: unread > 0
-                              ? Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.redAccent,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    unread > 9 ? "9+" : "$unread",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                )
-                              : null,
-                        );
-                      },
-                    ),
+                  AnimatedMenuButton(
+                    icon: Icons.chat_bubble_outline,
+                    title: "Mis mensajes",
+                    onTap: () {
+                      if (user != null) {
+                        _showInternalMessages(context, user.uid);
+                      }
+                    },
+                  ),
+
                   AnimatedMenuButton(
                     icon: Icons.work_outline,
                     title: "Mis tareas",
@@ -131,16 +92,24 @@ class WorkerProfilePage extends StatelessWidget {
                       }
                     },
                   ),
+
                   AnimatedMenuButton(
                     icon: Icons.email_outlined,
-                    title: "Contactar administrador",
+                    title: "Contactar Trabajador",
                     onTap: () {
                       if (user != null) {
-                        _showContactAdmin(context, user.uid);
+                        _showContactWorker(context, user.uid);
                       }
                     },
                   ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 40),
+                    child: Divider(color: Colors.white10),
+                  ),
+
                   const SizedBox(height: 25),
+
                   AnimatedLogoutButton(
                     text: "Cerrar sesión",
                     onTap: () async {
@@ -154,10 +123,7 @@ class WorkerProfilePage extends StatelessWidget {
                             ),
                             title: const Text(
                               "Cerrar sesión",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: TextStyle(color: Colors.white),
                             ),
                             content: const Text(
                               "¿Estás seguro de que quieres cerrar sesión?",
@@ -165,7 +131,9 @@ class WorkerProfilePage extends StatelessWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(context, false),
+                                onPressed: () {
+                                  Navigator.pop(context, false);
+                                },
                                 child: const Text(
                                   "Cancelar",
                                   style: TextStyle(color: Colors.white70),
@@ -174,31 +142,33 @@ class WorkerProfilePage extends StatelessWidget {
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.redAccent,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
                                 ),
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text("Cerrar sesión"),
+                                onPressed: () {
+                                  Navigator.pop(context, true);
+                                },
+                                child: const Text(
+                                  "Cerrar sesión",
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ),
                             ],
                           );
                         },
                       );
 
-                    if (confirmar != true) return;
+                      if (confirmar == true) {
+                        await FirebaseAuth.instance.signOut();
 
-                    if (!context.mounted) return;
+                        if (!context.mounted) return;
 
-                    await FirebaseAuth.instance.signOut();
-                    if (!context.mounted) return;
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const RootPage()),
-                      (route) => false,
-                    );
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const RootPage()),
+                          (route) => false,
+                        );
+                      }
                     },
                   ),
+
                   const SizedBox(height: 50),
                 ],
               ),
@@ -226,9 +196,11 @@ class WorkerProfilePage extends StatelessWidget {
 
         final nombre = data['nombre'] ?? "";
         final apellidos = data['apellidos'] ?? "";
+
         final avatar = data['avatar'];
 
         String iniciales = "W";
+
         if (nombre.isNotEmpty) {
           iniciales = nombre[0].toUpperCase();
         }
@@ -265,7 +237,9 @@ class WorkerProfilePage extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 15),
+
             Text(
               "$nombre $apellidos",
               style: const TextStyle(
@@ -274,7 +248,9 @@ class WorkerProfilePage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 5),
+
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -288,9 +264,11 @@ class WorkerProfilePage extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.verified, color: Colors.greenAccent, size: 18),
+
                   SizedBox(width: 8),
+
                   Text(
-                    "Trabajador activo",
+                    "Administrador activo",
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
@@ -334,6 +312,7 @@ class WorkerProfilePage extends StatelessWidget {
                       .set({'avatar': avatar}, SetOptions(merge: true));
 
                   if (!context.mounted) return;
+
                   Navigator.pop(context);
                 },
                 child: CircleAvatar(backgroundImage: AssetImage(avatar)),
@@ -345,16 +324,20 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showEditWorkerProfile(BuildContext context, String uid) async {
+  void _showEditAdminProfile(BuildContext context, String uid) async {
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .get();
 
     final data = doc.data() ?? {};
+
     final nameController = TextEditingController(text: data['nombre'] ?? '');
+
     final lastController = TextEditingController(text: data['apellidos'] ?? '');
+
     final phoneController = TextEditingController(text: data['telefono'] ?? '');
+
     final addressController = TextEditingController(
       text: data['direccion'] ?? '',
     );
@@ -386,7 +369,9 @@ class WorkerProfilePage extends StatelessWidget {
               _buildInput(lastController, "Apellidos"),
               _buildInput(phoneController, "Teléfono"),
               _buildInput(addressController, "Dirección"),
+
               const SizedBox(height: 15),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -395,13 +380,14 @@ class WorkerProfilePage extends StatelessWidget {
                         .collection('users')
                         .doc(uid)
                         .set({
-                      'nombre': nameController.text.trim(),
-                      'apellidos': lastController.text.trim(),
-                      'telefono': phoneController.text.trim(),
-                      'direccion': addressController.text.trim(),
-                    }, SetOptions(merge: true));
+                          'nombre': nameController.text.trim(),
+                          'apellidos': lastController.text.trim(),
+                          'telefono': phoneController.text.trim(),
+                          'direccion': addressController.text.trim(),
+                        }, SetOptions(merge: true));
 
                     if (!context.mounted) return;
+
                     Navigator.pop(context);
                   },
                   child: const Text("Guardar cambios"),
@@ -409,6 +395,305 @@ class WorkerProfilePage extends StatelessWidget {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showContactWorker(BuildContext context, String uid) async {
+    final subjectController = TextEditingController();
+    final messageController = TextEditingController();
+
+    // ✅ MULTI SELECCIÓN
+    List<String> selectedEmployeeIds = [];
+    List<String> selectedWorkerNames = [];
+    bool selectAll = false;
+
+    // 🔥 OBTENER NEGOCIOS DEL ADMIN
+    final adminDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    final adminData = adminDoc.data() ?? {};
+
+    final List<String> negocios = List<String>.from(
+      adminData['negocios'] ?? [],
+    );
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF0F172A),
+                    Color(0xFF1E293B),
+                    Color(0xFF334155),
+                  ],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Contactar trabajador",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // 👇 SI EL ADMIN NO TIENE NEGOCIOS
+                    if (negocios.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text(
+                          "No tienes negocios asignados",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      )
+                    else
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('rol', isEqualTo: 'worker')
+                            .where('negocios', arrayContainsAny: negocios)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const CircularProgressIndicator();
+                          }
+
+                          final workers = snapshot.data!.docs;
+
+                          if (workers.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                "No hay trabajadores disponibles",
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            );
+                          }
+
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              children: [
+                                // ✅ SELECCIONAR TODOS
+                                CheckboxListTile(
+                                  value: selectAll,
+                                  activeColor: Colors.blueAccent,
+                                  title: const Text(
+                                    "Todos los trabajadores",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      selectAll = value ?? false;
+
+                                      if (selectAll) {
+                                        selectedEmployeeIds = workers
+                                            .map((w) => w.id)
+                                            .toList();
+
+                                        selectedWorkerNames = workers.map((w) {
+                                          final data =
+                                              w.data() as Map<String, dynamic>;
+
+                                          return "${data['nombre'] ?? ''} ${data['apellidos'] ?? ''}";
+                                        }).toList();
+                                      } else {
+                                        selectedEmployeeIds.clear();
+                                        selectedWorkerNames.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+
+                                const Divider(color: Colors.white24),
+
+                                // ✅ LISTA DE TRABAJADORES
+                                SizedBox(
+                                  height: 220,
+                                  child: ListView.builder(
+                                    itemCount: workers.length,
+                                    itemBuilder: (context, index) {
+                                      final worker = workers[index];
+
+                                      final data =
+                                          worker.data() as Map<String, dynamic>;
+
+                                      final workerName =
+                                          "${data['nombre'] ?? ''} ${data['apellidos'] ?? ''}";
+
+                                      final isSelected = selectedEmployeeIds
+                                          .contains(worker.id);
+
+                                      return CheckboxListTile(
+                                        value: isSelected,
+                                        activeColor: Colors.blueAccent,
+                                        title: Text(
+                                          workerName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            if (value == true) {
+                                              if (!selectedEmployeeIds.contains(
+                                                worker.id,
+                                              )) {
+                                                selectedEmployeeIds.add(
+                                                  worker.id,
+                                                );
+
+                                                selectedWorkerNames.add(
+                                                  workerName,
+                                                );
+                                              }
+                                            } else {
+                                              selectedEmployeeIds.remove(
+                                                worker.id,
+                                              );
+
+                                              selectedWorkerNames.remove(
+                                                workerName,
+                                              );
+                                            }
+
+                                            // 🔥 CONTROL AUTOMÁTICO
+                                            selectAll =
+                                                selectedEmployeeIds.length ==
+                                                workers.length;
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    _buildInput(subjectController, "Asunto"),
+
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: TextField(
+                        controller: messageController,
+                        maxLines: 5,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: "Escribe tu mensaje...",
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.send),
+                        label: const Text("Enviar mensaje"),
+                        onPressed: () async {
+                          // ✅ VALIDAR SELECCIÓN
+                          if (selectedEmployeeIds.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Selecciona al menos un trabajador",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          // ✅ VALIDAR CAMPOS
+                          if (subjectController.text.trim().isEmpty ||
+                              messageController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Completa todos los campos"),
+                              ),
+                            );
+                            return;
+                          }
+
+                          // ✅ ENVIAR A TODOS LOS SELECCIONADOS
+                          for (int i = 0; i < selectedEmployeeIds.length; i++) {
+                            await FirebaseFirestore.instance
+                                .collection('worker_messages')
+                                .add({
+                                  'adminId': uid,
+                                  'employeeId': selectedEmployeeIds[i],
+                                  'workerName': selectedWorkerNames[i],
+                                  'subject': subjectController.text.trim(),
+                                  'message': messageController.text.trim(),
+                                  'createdAt': FieldValue.serverTimestamp(),
+                                  'status': 'pendiente',
+                                });
+                          }
+
+                          if (!context.mounted) return;
+
+                          Navigator.pop(context);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Mensaje enviado a ${selectedEmployeeIds.length} trabajador(es)",
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -422,38 +707,47 @@ class WorkerProfilePage extends StatelessWidget {
       builder: (context) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.75,
+
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
             ),
+
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
           ),
+
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('worker_messages')
-                .where('employeeId', isEqualTo: uid)
+                .collection('admin_messages')
+                .where('adminId', isEqualTo: uid)
                 .snapshots(),
+
             builder: (context, snapshot) {
+              // 🔴 ERROR
               if (snapshot.hasError) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Text(
                       snapshot.error.toString(),
+
                       style: const TextStyle(color: Colors.redAccent),
                     ),
                   ),
                 );
               }
 
+              // ⏳ CARGA
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
 
+              // 📭 SIN MENSAJES
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(
                   child: Text(
                     "No tienes mensajes",
+
                     style: TextStyle(color: Colors.white70),
                   ),
                 );
@@ -463,50 +757,69 @@ class WorkerProfilePage extends StatelessWidget {
 
               return ListView.builder(
                 padding: const EdgeInsets.all(20),
+
                 itemCount: docs.length,
+
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
+
                   final asunto = data['subject'] ?? 'Sin asunto';
+
                   final mensaje = data['message'] ?? '';
 
                   DateTime? fecha;
+
                   if (data['createdAt'] != null) {
                     fecha = (data['createdAt'] as Timestamp).toDate();
                   }
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 15),
+
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.05),
+
                       borderRadius: BorderRadius.circular(18),
+
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
+
                     child: ListTile(
                       leading: const CircleAvatar(
                         backgroundColor: Color(0xFF64B5F6),
+
                         child: Icon(Icons.mail, color: Colors.white),
                       ),
+
                       title: Text(
                         asunto,
+
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+
                         children: [
                           const SizedBox(height: 6),
+
                           Text(
                             mensaje,
+
                             style: const TextStyle(color: Colors.white70),
                           ),
+
                           const SizedBox(height: 8),
+
                           if (fecha != null)
                             Text(
                               "${fecha.day}/${fecha.month}/${fecha.year} - ${fecha.hour}:${fecha.minute.toString().padLeft(2, '0')}",
+
                               style: const TextStyle(
                                 color: Colors.white38,
                                 fontSize: 11,
@@ -514,8 +827,10 @@ class WorkerProfilePage extends StatelessWidget {
                             ),
                         ],
                       ),
+
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
+
                         onPressed: () async {
                           await docs[index].reference.delete();
                         },
@@ -540,10 +855,12 @@ class WorkerProfilePage extends StatelessWidget {
     String priority = "low";
     String searchText = "";
 
-    String selectedFilter = "none";
+    // 🎛 filtros nuevos
+    String selectedFilter = "none"; // none | priority | tags
     String selectedPriority = "all";
     String selectedTag = "";
 
+    // 🆕 selección múltiple
     Set<String> selectedNotes = {};
 
     showModalBottomSheet(
@@ -568,11 +885,15 @@ class WorkerProfilePage extends StatelessWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 20),
+
                   const Text(
                     "Mi bloc de notas",
                     style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
+
                   const SizedBox(height: 10),
+
+                  // 📝 INPUT NOTA
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
@@ -590,7 +911,10 @@ class WorkerProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 10),
+
+                  // 🏷 TAG INPUT
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -609,15 +933,19 @@ class WorkerProfilePage extends StatelessWidget {
                           icon: const Icon(Icons.add, color: Colors.white),
                           onPressed: () {
                             if (tagController.text.trim().isEmpty) return;
+
                             setState(() {
                               selectedTags.add(tagController.text.trim());
                             });
+
                             tagController.clear();
                           },
                         ),
                       ],
                     ),
                   ),
+
+                  // 🏷 TAGS VISUALES
                   Wrap(
                     spacing: 6,
                     children: selectedTags
@@ -642,6 +970,8 @@ class WorkerProfilePage extends StatelessWidget {
                         )
                         .toList(),
                   ),
+
+                  // PRIORIDAD
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: DropdownButton<String>(
@@ -660,6 +990,8 @@ class WorkerProfilePage extends StatelessWidget {
                       },
                     ),
                   ),
+
+                  // 🚀 BOTÓN CREAR NOTA
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: SizedBox(
@@ -673,17 +1005,15 @@ class WorkerProfilePage extends StatelessWidget {
                               .doc(uid)
                               .collection('notes')
                               .add({
-                            'text': controller.text.trim(),
-                            'createdAt': FieldValue.serverTimestamp(),
-                            'done': false,
-                            'tags': selectedTags,
-                            'priority': priority,
-                          });
+                                'text': controller.text.trim(),
+                                'createdAt': FieldValue.serverTimestamp(),
+                                'done': false,
+                                'tags': selectedTags,
+                                'priority': priority,
+                              });
 
-                          setState(() {
-                            controller.clear();
-                            selectedTags = [];
-                          });
+                          controller.clear();
+                          selectedTags = [];
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueAccent,
@@ -697,7 +1027,10 @@ class WorkerProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 10),
+
+                  // 🔍 BUSCADOR
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: TextField(
@@ -724,7 +1057,10 @@ class WorkerProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 10),
+
+                  // 🎛 BOTONES FILTRO
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -763,6 +1099,8 @@ class WorkerProfilePage extends StatelessWidget {
                       ],
                     ),
                   ),
+
+                  // 🔽 FILTRO PRIORIDAD
                   if (selectedFilter == "priority")
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -786,9 +1124,11 @@ class WorkerProfilePage extends StatelessWidget {
                         },
                       ),
                     ),
+
+                  // 🔽 FILTRO TAGS
                   if (selectedFilter == "tags")
                     SizedBox(
-                      height: 50,
+                      height: 80,
                       child: SingleChildScrollView(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -831,6 +1171,8 @@ class WorkerProfilePage extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  // 🆕 BOTÓN BORRAR SELECCIONADAS
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: SizedBox(
@@ -857,6 +1199,7 @@ class WorkerProfilePage extends StatelessWidget {
                                       .doc(id)
                                       .delete();
                                 }
+
                                 setState(() {
                                   selectedNotes.clear();
                                 });
@@ -864,7 +1207,10 @@ class WorkerProfilePage extends StatelessWidget {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 10),
+
+                  // 📋 LISTA
                   Expanded(
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
@@ -890,7 +1236,7 @@ class WorkerProfilePage extends StatelessWidget {
 
                             final text = (data['text'] ?? '').toLowerCase();
                             final tags = (data['tags'] ?? []) as List;
-                            final priorityVal = (data['priority'] ?? '');
+                            final priority = (data['priority'] ?? '');
                             final done = data['done'] ?? false;
 
                             if (searchText.isNotEmpty &&
@@ -900,7 +1246,7 @@ class WorkerProfilePage extends StatelessWidget {
 
                             if (selectedFilter == "priority") {
                               if (selectedPriority != "all" &&
-                                  priorityVal != selectedPriority) {
+                                  priority != selectedPriority) {
                                 return const SizedBox.shrink();
                               }
                             }
@@ -992,277 +1338,6 @@ class WorkerProfilePage extends StatelessWidget {
     );
   }
 
-  void _showContactAdmin(BuildContext context, String uid) async {
-    final subjectController = TextEditingController();
-    final messageController = TextEditingController();
-
-    List<String> selectedadminIds = [];
-    List<String> selectedAdminNames = [];
-    bool selectAll = false;
-
-    final adminDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-
-    final adminData = adminDoc.data() ?? {};
-    final List<String> negocios = List<String>.from(
-      adminData['negocios'] ?? [],
-    );
-
-    if (!context.mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF0F172A),
-                    Color(0xFF1E293B),
-                    Color(0xFF334155),
-                  ],
-                ),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Contactar Administrador",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (negocios.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Text(
-                          "No tienes negocios asignados",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      )
-                    else
-                      StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .where('rol', isEqualTo: 'admin')
-                            .where('negocios', arrayContainsAny: negocios)
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const CircularProgressIndicator();
-                          }
-
-                          final admins = snapshot.data!.docs;
-
-                          if (admins.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text(
-                                "No hay administradores disponibles",
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            );
-                          }
-
-                          return Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Column(
-                              children: [
-                                CheckboxListTile(
-                                  value: selectAll,
-                                  activeColor: Colors.blueAccent,
-                                  title: const Text(
-                                    "Todos los administradores",
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectAll = value ?? false;
-
-                                      if (selectAll) {
-                                        selectedadminIds = admins
-                                            .map((w) => w.id)
-                                            .toList();
-
-                                        selectedAdminNames = admins.map((w) {
-                                          final data =
-                                              w.data() as Map<String, dynamic>;
-                                          return "${data['nombre'] ?? ''} ${data['apellidos'] ?? ''}";
-                                        }).toList();
-                                      } else {
-                                        selectedadminIds.clear();
-                                        selectedAdminNames.clear();
-                                      }
-                                    });
-                                  },
-                                ),
-                                const Divider(color: Colors.white24),
-                                SizedBox(
-                                  height: 220,
-                                  child: ListView.builder(
-                                    itemCount: admins.length,
-                                    itemBuilder: (context, index) {
-                                      final worker = admins[index];
-                                      final data =
-                                          worker.data() as Map<String, dynamic>;
-                                      final workerName =
-                                          "${data['nombre'] ?? ''} ${data['apellidos'] ?? ''}";
-
-                                      final isSelected = selectedadminIds
-                                          .contains(worker.id);
-
-                                      return CheckboxListTile(
-                                        value: isSelected,
-                                        activeColor: Colors.blueAccent,
-                                        title: Text(
-                                          workerName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            if (value == true) {
-                                              if (!selectedadminIds.contains(
-                                                worker.id,
-                                              )) {
-                                                selectedadminIds.add(worker.id);
-                                                selectedAdminNames.add(
-                                                  workerName,
-                                                );
-                                              }
-                                            } else {
-                                              selectedadminIds.remove(
-                                                worker.id,
-                                              );
-                                              selectedAdminNames.remove(
-                                                workerName,
-                                              );
-                                            }
-                                            selectAll =
-                                                selectedadminIds.length ==
-                                                admins.length;
-                                          });
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    const SizedBox(height: 20),
-                    _buildInput(subjectController, "Asunto"),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: TextField(
-                        controller: messageController,
-                        maxLines: 5,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: "Escribe tu mensaje...",
-                          hintStyle: const TextStyle(color: Colors.white54),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.send),
-                        label: const Text("Enviar mensaje"),
-                        onPressed: () async {
-                          if (selectedadminIds.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Selecciona al menos un administrador",
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-
-                          if (subjectController.text.trim().isEmpty ||
-                              messageController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Completa todos los campos"),
-                              ),
-                            );
-                            return;
-                          }
-
-                          for (int i = 0; i < selectedadminIds.length; i++) {
-                            await FirebaseFirestore.instance
-                                .collection('admin_messages')
-                                .add({
-                              'employeeId': uid,
-                              'adminId': selectedadminIds[i],
-                              'adminName': selectedAdminNames[i],
-                              'subject': subjectController.text.trim(),
-                              'message': messageController.text.trim(),
-                              'createdAt': FieldValue.serverTimestamp(),
-                              'status': 'pendiente',
-                            });
-                          }
-
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                "Mensaje enviado a ${selectedadminIds.length} administrador(es)",
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildInput(TextEditingController controller, String hint) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1288,14 +1363,12 @@ class AnimatedMenuButton extends StatefulWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-  final Widget? trailing;
 
   const AnimatedMenuButton({
     super.key,
     required this.icon,
     required this.title,
     required this.onTap,
-    this.trailing,
   });
 
   @override
@@ -1313,14 +1386,18 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
       onExit: (_) => setState(() => hovering = false),
       child: GestureDetector(
         onTapDown: (_) => setState(() => pressed = true),
+
         onTapUp: (_) {
           setState(() => pressed = false);
           widget.onTap();
         },
+
         onTapCancel: () => setState(() => pressed = false),
+
         child: AnimatedScale(
           duration: const Duration(milliseconds: 120),
           scale: pressed ? 0.96 : (hovering ? 1.04 : 1.0),
+
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             margin: const EdgeInsets.only(bottom: 14),
@@ -1331,6 +1408,7 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
+
             child: ClipRRect(
               borderRadius: BorderRadius.circular(22),
               child: BackdropFilter(
@@ -1343,7 +1421,9 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
                   child: Row(
                     children: [
                       Icon(widget.icon, color: const Color(0xFF64B5F6)),
+
                       const SizedBox(width: 15),
+
                       Text(
                         widget.title,
                         style: const TextStyle(
@@ -1351,9 +1431,9 @@ class _AnimatedMenuButtonState extends State<AnimatedMenuButton> {
                           fontSize: 16,
                         ),
                       ),
+
                       const Spacer(),
-                      if (widget.trailing != null) widget.trailing!,
-                      const SizedBox(width: 8),
+
                       const Icon(
                         Icons.arrow_forward_ios,
                         color: Colors.white24,
@@ -1392,22 +1472,28 @@ class _AnimatedLogoutButtonState extends State<AnimatedLogoutButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => setState(() => pressed = true),
+
       onTapUp: (_) {
         setState(() => pressed = false);
         widget.onTap();
       },
+
       onTapCancel: () => setState(() => pressed = false),
+
       child: AnimatedScale(
         duration: const Duration(milliseconds: 120),
         scale: pressed ? 0.95 : 1.0,
+
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
+
           decoration: BoxDecoration(
             color: Colors.redAccent,
             borderRadius: BorderRadius.circular(20),
           ),
+
           child: Center(
             child: Text(
               widget.text,
